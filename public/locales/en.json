@@ -1,0 +1,182 @@
+{
+  "common": {
+    "appName": "NeuroPsych Platform",
+    "save": "Save",
+    "cancel": "Cancel",
+    "delete": "Delete",
+    "edit": "Edit",
+    "next": "Next",
+    "previous": "Previous",
+    "submit": "Submit",
+    "loading": "Loading...",
+    "error": "Error",
+    "success": "Success",
+    "close": "Close",
+    "copy": "Copy",
+    "download": "Download",
+    "export": "Export",
+    "back": "Back"
+  },
+  "questionnaire": {
+    "title": "Questionnaire",
+    "question": "Question",
+    "answer": "Answer",
+    "required": "Required field",
+    "validation": {
+      "answerAll": "Please answer all questions",
+      "invalidEmail": "Invalid email address"
+    },
+    "navigation": {
+      "next": "Next",
+      "previous": "Previous",
+      "submit": "Submit",
+      "progress": "Progress"
+    },
+    "messages": {
+      "saved": "Saved",
+      "saving": "Saving...",
+      "saveFailed": "Save failed",
+      "submitted": "Submitted successfully",
+      "submitFailed": "Submission failed"
+    }
+  },
+  "admin": {
+    "dashboard": {
+      "title": "Clinician Dashboard",
+      "welcome": "Welcome!",
+      "patients": "Patients",
+      "questionnaires": "Questionnaires",
+      "results": "Results",
+      "settings": "Settings"
+    },
+    "patients": {
+      "title": "Patients",
+      "subtitle": "Manage your patient profiles",
+      "add": "Add Patient",
+      "name": "Name",
+      "surname": "Surname",
+      "sex": "Sex",
+      "dateOfBirth": "Date of Birth",
+      "yearsOfEducation": "Years of Education",
+      "registered": "Registered",
+      "actions": "Actions",
+      "view": "View",
+      "edit": "Edit",
+      "delete": "Delete",
+      "noPatients": "No patients yet",
+      "search": "Search by name...",
+      "totalPatients": "Total Patients",
+      "completion": "Completion"
+    },
+    "questionnaires": {
+      "title": "Questionnaires",
+      "subtitle": "Manage and assign questionnaires",
+      "selectPatient": "Select Patient",
+      "selectQuestionnaires": "Select Questionnaires",
+      "generateLinks": "Generate Links & Assign",
+      "available": "Available Questionnaires",
+      "type": "Type",
+      "category": "Category",
+      "questions": "Questions",
+      "version": "Version",
+      "selfType": "Self-Report",
+      "otherType": "Informant",
+      "successMessage": "Questionnaires Assigned Successfully",
+      "linkExpires": "Expires",
+      "sendEmail": "Send Email",
+      "preview": "Preview"
+    },
+    "results": {
+      "title": "Results",
+      "subtitle": "View and export results",
+      "exportCSV": "Export CSV",
+      "filters": "Filters",
+      "search": "Search by patient or questionnaire...",
+      "filterByStatus": "Filter by status",
+      "allStatuses": "All Statuses",
+      "completed": "Completed",
+      "pending": "Pending",
+      "error": "Error",
+      "totalResults": "Total Results",
+      "clinical": "Clinical Cases",
+      "patient": "Patient",
+      "questionnaire": "Questionnaire",
+      "status": "Status",
+      "percentile": "Percentile",
+      "diagnosis": "Diagnosis",
+      "date": "Date",
+      "actions": "Actions"
+    },
+    "login": {
+      "title": "Clinician Login",
+      "subtitle": "Access the NeuroPsych Dashboard",
+      "email": "Email",
+      "password": "Password",
+      "signIn": "Sign In",
+      "forgotPassword": "Forgot password?",
+      "register": "Register",
+      "demoCredentials": "Demo Credentials"
+    }
+  },
+  "adhd": {
+    "metrics": {
+      "disattenzione": "Inattention",
+      "iperattivita": "Hyperactivity",
+      "impulsivita": "Impulsivity",
+      "sct": "Trauma or Stress",
+      "symptoms": "Symptoms",
+      "score": "Score",
+      "total": "Total ADHD"
+    },
+    "severity": {
+      "normal": "Normal",
+      "borderline": "Borderline",
+      "clinical": "Clinical",
+      "severe": "Severe"
+    },
+    "diagnosis": {
+      "adhd": "ADHD",
+      "borderline": "Borderline",
+      "nonAdhd": "Non-ADHD"
+    }
+  },
+  "questionnaires": {
+    "baars": {
+      "name": "Barkley Adult ADHD Rating Scale-IV",
+      "description": "Comprehensive assessment of ADHD symptoms in adults",
+      "q1": "Difficulty concentrating on tasks or activities",
+      "q2": "Procrastination or difficulty starting activities",
+      "q3": "Distraction during work",
+      "q4": "Difficulty completing tasks",
+      "q5": "Disorganization in tasks",
+      "q6": "Difficulty planning activities",
+      "q7": "Frequent loss of important objects",
+      "q8": "Forgetfulness in daily activities",
+      "q9": "Restlessness during sedentary sessions",
+      "q10": "Need to move around during meetings",
+      "q11": "Difficulty sitting still",
+      "q12": "Excessive activity or talking",
+      "q13": "Impatience",
+      "q14": "Difficulty waiting for turns",
+      "q15": "Interrupting others during conversations",
+      "q16": "Difficulty controlling emotions",
+      "q17": "Anger outbursts",
+      "q18": "Easy to demotivate",
+      "q19": "Mental fatigue"
+    },
+    "likert": {
+      "never": "Never (0)",
+      "rarely": "Rarely (1)",
+      "sometimes": "Sometimes (2)",
+      "often": "Often (3)",
+      "veryOften": "Very Often (4)"
+    }
+  },
+  "messages": {
+    "confirmDelete": "Are you sure you want to delete this item?",
+    "success": "Operation completed successfully",
+    "error": "An error occurred. Please try again.",
+    "loading": "Loading...",
+    "noData": "No data available"
+  }
+}

@@ -1,0 +1,182 @@
+{
+  "common": {
+    "appName": "NeuroPsych Platform",
+    "save": "Salva",
+    "cancel": "Annulla",
+    "delete": "Elimina",
+    "edit": "Modifica",
+    "next": "Seguente",
+    "previous": "Precedente",
+    "submit": "Invia",
+    "loading": "Caricamento...",
+    "error": "Errore",
+    "success": "Successo",
+    "close": "Chiudi",
+    "copy": "Copia",
+    "download": "Scarica",
+    "export": "Esporta",
+    "back": "Indietro"
+  },
+  "questionnaire": {
+    "title": "Questionario",
+    "question": "Domanda",
+    "answer": "Risposta",
+    "required": "Campo obbligatorio",
+    "validation": {
+      "answerAll": "Per favore risponda a tutte le domande",
+      "invalidEmail": "Email non valida"
+    },
+    "navigation": {
+      "next": "Seguente",
+      "previous": "Precedente",
+      "submit": "Invia",
+      "progress": "Progresso"
+    },
+    "messages": {
+      "saved": "Salvato",
+      "saving": "Salvataggio in corso...",
+      "saveFailed": "Errore nel salvataggio",
+      "submitted": "Inviato con successo",
+      "submitFailed": "Errore nell'invio"
+    }
+  },
+  "admin": {
+    "dashboard": {
+      "title": "Dashboard Clinico",
+      "welcome": "Benvenuto!",
+      "patients": "Pazienti",
+      "questionnaires": "Questionari",
+      "results": "Risultati",
+      "settings": "Impostazioni"
+    },
+    "patients": {
+      "title": "Pazienti",
+      "subtitle": "Gestisci i profili dei tuoi pazienti",
+      "add": "Aggiungi Paziente",
+      "name": "Nome",
+      "surname": "Cognome",
+      "sex": "Sesso",
+      "dateOfBirth": "Data di Nascita",
+      "yearsOfEducation": "Anni di Educazione",
+      "registered": "Registrato",
+      "actions": "Azioni",
+      "view": "Visualizza",
+      "edit": "Modifica",
+      "delete": "Elimina",
+      "noPatients": "Nessun paziente ancora",
+      "search": "Cerca per nome...",
+      "totalPatients": "Pazienti Totali",
+      "completion": "Completamento"
+    },
+    "questionnaires": {
+      "title": "Questionari",
+      "subtitle": "Gestisci e assegna i questionari",
+      "selectPatient": "Seleziona Paziente",
+      "selectQuestionnaires": "Seleziona Questionari",
+      "generateLinks": "Genera Link e Assegna",
+      "available": "Questionari Disponibili",
+      "type": "Tipo",
+      "category": "Categoria",
+      "questions": "Domande",
+      "version": "Versione",
+      "selfType": "Paziente",
+      "otherType": "Informante",
+      "successMessage": "Questionari Assegnati con Successo",
+      "linkExpires": "Scade il",
+      "sendEmail": "Invia Email",
+      "preview": "Anteprima"
+    },
+    "results": {
+      "title": "Risultati",
+      "subtitle": "Visualizza ed esporta i risultati",
+      "exportCSV": "Esporta CSV",
+      "filters": "Filtri",
+      "search": "Cerca per paziente o questionario...",
+      "filterByStatus": "Filtra per stato",
+      "allStatuses": "Tutti gli Stati",
+      "completed": "Completato",
+      "pending": "In Sospeso",
+      "error": "Errore",
+      "totalResults": "Risultati Totali",
+      "clinical": "Casi Clinici",
+      "patient": "Paziente",
+      "questionnaire": "Questionario",
+      "status": "Stato",
+      "percentile": "Percentile",
+      "diagnosis": "Diagnosi",
+      "date": "Data",
+      "actions": "Azioni"
+    },
+    "login": {
+      "title": "Login Clinico",
+      "subtitle": "Accedi al Dashboard NeuroPsych",
+      "email": "Email",
+      "password": "Password",
+      "signIn": "Accedi",
+      "forgotPassword": "Password dimenticata?",
+      "register": "Registrati",
+      "demoCredentials": "Credenziali Demo"
+    }
+  },
+  "adhd": {
+    "metrics": {
+      "disattenzione": "Disattenzione",
+      "iperattivita": "Iperattività",
+      "impulsivita": "Impulsività",
+      "sct": "Trauma o Stress",
+      "symptoms": "Sintomi",
+      "score": "Punteggio",
+      "total": "Totale ADHD"
+    },
+    "severity": {
+      "normal": "Nella norma",
+      "borderline": "Borderline",
+      "clinical": "Clinico",
+      "severe": "Grave"
+    },
+    "diagnosis": {
+      "adhd": "ADHD",
+      "borderline": "Borderline",
+      "nonAdhd": "Non-ADHD"
+    }
+  },
+  "questionnaires": {
+    "baars": {
+      "name": "Barkley Adult ADHD Rating Scale-IV",
+      "description": "Valutazione completa dei sintomi ADHD negli adulti",
+      "q1": "Difficoltà a concentrarsi su compiti o attività",
+      "q2": "Procrastinazione o difficoltà ad iniziare attività",
+      "q3": "Distrazione durante il lavoro",
+      "q4": "Difficoltà a completare compiti",
+      "q5": "Disorganizzazione nei compiti",
+      "q6": "Difficoltà a pianificare attività",
+      "q7": "Perdita frequente di oggetti importanti",
+      "q8": "Dimenticanza nelle attività quotidiane",
+      "q9": "Irrequietezza durante sessioni sedentarie",
+      "q10": "Necessità di muoversi durante le riunioni",
+      "q11": "Difficoltà a restare seduto",
+      "q12": "Eccessiva attività o parlantina",
+      "q13": "Impazienza",
+      "q14": "Difficoltà ad aspettare il turno",
+      "q15": "Interruzione degli altri durante conversazioni",
+      "q16": "Difficoltà a controllare le emozioni",
+      "q17": "Scatti di rabbia",
+      "q18": "Facilità a demotivarsi",
+      "q19": "Affaticamento mentale"
+    },
+    "likert": {
+      "never": "Mai (0)",
+      "rarely": "Raramente (1)",
+      "sometimes": "A volte (2)",
+      "often": "Spesso (3)",
+      "veryOften": "Molto spesso (4)"
+    }
+  },
+  "messages": {
+    "confirmDelete": "Sei sicuro di voler eliminare questo elemento?",
+    "success": "Operazione completata con successo",
+    "error": "Si è verificato un errore. Riprova.",
+    "loading": "Caricamento in corso...",
+    "noData": "Nessun dato disponibile"
+  }
+}
