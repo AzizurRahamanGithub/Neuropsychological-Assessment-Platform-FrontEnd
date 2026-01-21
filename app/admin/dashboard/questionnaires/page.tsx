@@ -1,12 +1,15 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Checkbox } from '@/components/ui/checkbox';
+import { QUESTIONNAIRES } from '@/lib/questionnaires';
+import { useRouter } from 'next/navigation';
+import { Trash2 } from 'lucide-react';
 import {
   Table,
   TableBody,
@@ -23,22 +26,13 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-  DialogFooter,
-} from '@/components/ui/dialog';
-import {
   Plus,
   Copy,
   Mail,
   CheckCircle,
   AlertCircle,
 } from 'lucide-react';
-import type { Questionnaire, QuestionnaireLink } from '@/types';
+import type { Questionnaire } from '@/types';
 
 interface PatientWithAssignments {
   id: number;
@@ -55,6 +49,7 @@ interface GeneratedLink {
 }
 
 export default function QuestionnairesPage() {
+  const router = useRouter();
   const [questionnaires, setQuestionnaires] = useState<Questionnaire[]>([]);
   const [selectedQuestionnaires, setSelectedQuestionnaires] = useState<number[]>([]);
   const [selectedPatient, setSelectedPatient] = useState<string>('');
@@ -65,72 +60,45 @@ export default function QuestionnairesPage() {
   const [copiedLink, setCopiedLink] = useState<string>('');
   const [showAssignDialog, setShowAssignDialog] = useState(false);
 
+
+  const handleDeleteQuestionnaire = (id: number) => {
+  if (!confirm('Delete this questionnaire?')) return;
+  setQuestionnaires((prev) => prev.filter((x) => x.id !== id));
+  setSelectedQuestionnaires((prev) => prev.filter((qid) => qid !== id));
+};
+
+
+  const [qSearch, setQSearch] = useState("");
+
+  const filteredQuestionnaires = useMemo(() => {
+    const t = qSearch.trim().toLowerCase();
+    if (!t) return questionnaires;
+    return questionnaires.filter((q) =>
+      `${q.name} ${q.description || ""} ${q.type || ""}`.toLowerCase().includes(t)
+    );
+  }, [qSearch, questionnaires]);
+
   useEffect(() => {
     loadData();
   }, []);
+
+
 
   const loadData = async () => {
     try {
       setIsLoading(true);
 
-      // Mock questionnaires data
-      const mockQuestionnaires: Questionnaire[] = [
-        {
-          id: 1,
-          code: 'BAARS_IV',
-          name: 'Barkley Adult ADHD Rating Scale-IV',
-          description: 'Comprehensive ADHD assessment for adults',
-          type: 'SELF',
-          category: 'ADHD Assessment',
-          questionCount: 27,
-          version: 'IV',
-          createdAt: '2024-01-01',
-        },
-        {
-          id: 2,
-          code: 'CONNERS_ADHD',
-          name: 'Conners ADHD Rating Scale',
-          description: 'ADHD symptoms assessment',
-          type: 'SELF',
-          category: 'ADHD Assessment',
-          questionCount: 30,
-          version: 'v3',
-          createdAt: '2024-01-01',
-        },
-        {
-          id: 3,
-          code: 'SNAP_IV',
-          name: 'Swanson, Nolan, and Pelham Rating Scale',
-          description: 'Parent and teacher rating scale',
-          type: 'OTHER',
-          category: 'ADHD Assessment',
-          questionCount: 26,
-          version: 'IV',
-          createdAt: '2024-01-01',
-        },
-        {
-          id: 4,
-          code: 'CANTAB',
-          name: 'Cambridge Neuropsychological Test Automated Battery',
-          description: 'Cognitive assessment battery',
-          type: 'SELF',
-          category: 'Neuropsychological',
-          questionCount: 45,
-          version: '6.0',
-          createdAt: '2024-01-01',
-        },
-        {
-          id: 5,
-          code: 'MOXO',
-          name: 'Monotask and Dual-Task Performance Test',
-          description: 'Continuous attention and impulsivity',
-          type: 'SELF',
-          category: 'Attention',
-          questionCount: 15,
-          version: '2.0',
-          createdAt: '2024-01-01',
-        },
-      ];
+      // ✅ from registry (each questionnaire has its own file/page rules)
+      const mockQuestionnaires: Questionnaire[] = QUESTIONNAIRES.map((q) => ({
+        id: q.id,
+        code: q.code,
+        name: q.name,
+        description: q.description,
+        type: q.type,
+        category: q.category,
+        questionCount: q.questions.length,
+        createdAt: '2024-01-01',
+      }));
 
       // Mock patients data
       const mockPatients: PatientWithAssignments[] = [
@@ -158,6 +126,7 @@ export default function QuestionnairesPage() {
   };
 
   const handleAssignQuestionnaires = async () => {
+    setError('');
     if (!selectedPatient || selectedQuestionnaires.length === 0) {
       setError('Please select a patient and at least one questionnaire');
       return;
@@ -209,6 +178,7 @@ export default function QuestionnairesPage() {
       console.error('Failed to copy');
     }
   };
+
 
   if (isLoading) {
     return (
@@ -278,35 +248,48 @@ export default function QuestionnairesPage() {
               <label className="block text-sm font-medium text-gray-700">
                 Select Questionnaires ({selectedQuestionnaires.length} selected)
               </label>
+
+              {/* ✅ Search */}
+              <Input
+                placeholder="Search questionnaires..."
+                value={qSearch}
+                onChange={(e) => setQSearch(e.target.value)}
+              />
+
               <div className="border rounded-lg p-4 space-y-3 max-h-96 overflow-y-auto">
-                {questionnaires.map((q) => (
-                  <div key={q.id} className="flex items-start gap-3">
-                    <Checkbox
-                      id={`q-${q.id}`}
-                      checked={selectedQuestionnaires.includes(q.id)}
-                      onCheckedChange={() => handleSelectQuestionnaire(q.id)}
-                    />
-                    <div className="flex-1">
-                      <label
-                        htmlFor={`q-${q.id}`}
-                        className="font-medium text-gray-900 cursor-pointer block"
-                      >
-                        {q.name}
-                      </label>
-                      <p className="text-sm text-gray-600 mt-1">{q.description}</p>
-                      <div className="flex gap-2 mt-2">
-                        <span className="px-2 py-1 bg-gray-100 text-gray-700 text-xs rounded">
-                          {q.type}
-                        </span>
-                        <span className="px-2 py-1 bg-blue-100 text-blue-700 text-xs rounded">
-                          {q.questionCount} questions
-                        </span>
+                {filteredQuestionnaires.length === 0 ? (
+                  <p className="text-sm text-gray-600">No questionnaires found.</p>
+                ) : (
+                  filteredQuestionnaires.map((q) => (
+                    <div key={q.id} className="flex items-start gap-3">
+                      <Checkbox
+                        id={`q-${q.id}`}
+                        checked={selectedQuestionnaires.includes(q.id)}
+                        onCheckedChange={() => handleSelectQuestionnaire(q.id)}
+                      />
+                      <div className="flex-1">
+                        <label
+                          htmlFor={`q-${q.id}`}
+                          className="font-medium text-gray-900 cursor-pointer block"
+                        >
+                          {q.name}
+                        </label>
+                        <p className="text-sm text-gray-600 mt-1">{q.description}</p>
+                        <div className="flex gap-2 mt-2">
+                          <span className="px-2 py-1 bg-gray-100 text-gray-700 text-xs rounded">
+                            {q.type}
+                          </span>
+                          <span className="px-2 py-1 bg-blue-100 text-blue-700 text-xs rounded">
+                            {q.questionCount} questions
+                          </span>
+                        </div>
                       </div>
                     </div>
-                  </div>
-                ))}
+                  ))
+                )}
               </div>
             </div>
+
 
             <Button
               onClick={handleAssignQuestionnaires}
@@ -409,34 +392,80 @@ export default function QuestionnairesPage() {
                   <TableHead className="font-semibold">Type</TableHead>
                   <TableHead className="font-semibold">Category</TableHead>
                   <TableHead className="font-semibold">Questions</TableHead>
-                  <TableHead className="font-semibold">Version</TableHead>
                   <TableHead className="font-semibold text-right">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {questionnaires.map((q) => (
-                  <TableRow key={q.id} className="hover:bg-gray-50">
-                    <TableCell className="font-medium">{q.name}</TableCell>
+                {filteredQuestionnaires.map((q) => (
+                  <TableRow
+                    key={q.id}
+                    role="button"
+                    tabIndex={0}
+                    onClick={() => router.push(`/admin/dashboard/questionnaires/${q.code}`)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        router.push(`/admin/dashboard/questionnaires/${q.code}`);
+                      }
+                    }}
+                    className="cursor-pointer hover:bg-gray-50"
+                  >
+                    <TableCell className="font-medium">
+                      <div className="flex flex-col">
+                        <span className="text-gray-900">{q.name}</span>
+                        {q.description ? (
+                          <span className="text-xs text-gray-500 line-clamp-1">{q.description}</span>
+                        ) : null}
+                      </div>
+                    </TableCell>
+
                     <TableCell>
-                      <span className={`px-2 py-1 rounded text-sm ${
-                        q.type === 'SELF'
-                          ? 'bg-blue-100 text-blue-700'
-                          : 'bg-green-100 text-green-700'
-                      }`}>
+                      <span
+                        className={`inline-flex items-center px-2 py-1 rounded text-xs font-medium ${q.type === 'SELF'
+                            ? 'bg-blue-100 text-blue-700'
+                            : 'bg-green-100 text-green-700'
+                          }`}
+                      >
                         {q.type}
                       </span>
                     </TableCell>
-                    <TableCell>{q.category}</TableCell>
-                    <TableCell>{q.questionCount}</TableCell>
-                    <TableCell>{q.version}</TableCell>
+
+                    <TableCell className="text-gray-700">{q.category}</TableCell>
+
+                    <TableCell className="text-gray-700">{q.questionCount}</TableCell>
+
+                    {/* Actions */}
                     <TableCell className="text-right">
-                      <Button variant="ghost" size="sm">
-                        View
-                      </Button>
+                      <div className="flex justify-end gap-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={(e) => {
+                            e.stopPropagation(); // ✅ row click বন্ধ
+                            router.push(`/admin/dashboard/questionnaires/${q.code}`);
+                          }}
+                        >
+                          View
+                        </Button>
+
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                          onClick={(e) => {
+                            e.stopPropagation(); // ✅ row click বন্ধ
+                            handleDeleteQuestionnaire(q.id);
+                          }}
+                          title="Delete"
+                        >
+                          <Trash2 size={16} />
+                        </Button>
+                      </div>
                     </TableCell>
                   </TableRow>
                 ))}
               </TableBody>
+
             </Table>
           </div>
         </CardContent>
