@@ -23,52 +23,52 @@ export default function DashboardPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string>('');
 
-  useEffect(() => {
-    // Load dashboard stats from API
-    const loadStats = async () => {
-      try {
-        const token = localStorage.getItem('accessToken');
-        if (!token) {
-          setError('Authentication required');
-          return;
-        }
+  // useEffect(() => {
+  //   // Load dashboard stats from API
+  //   const loadStats = async () => {
+  //     try {
+  //       const token = localStorage.getItem('accessToken');
+  //       if (!token) {
+  //         setError('Authentication required');
+  //         return;
+  //       }
 
-        // For now, using mock data until backend is ready
-        setStats({
-          totalPatients: 24,
-          totalAssignments: 48,
-          completedAssignments: 32,
-          pendingAssignments: 16,
-          recentActivity: [
-            {
-              id: 1,
-              title: 'Giovanni Rossi completed Barkley ADHD Scale',
-              timestamp: '2 hours ago',
-              type: 'result',
-            },
-            {
-              id: 2,
-              title: 'Maria Bianchi assigned 3 new questionnaires',
-              timestamp: '4 hours ago',
-              type: 'assignment',
-            },
-            {
-              id: 3,
-              title: 'New patient: Francesco Verdi registered',
-              timestamp: '1 day ago',
-              type: 'patient',
-            },
-          ],
-        });
-      } catch (err: any) {
-        setError(err?.message || 'Failed to load dashboard data');
-      } finally {
-        setIsLoading(false);
-      }
-    };
+  //       // For now, using mock data until backend is ready
+  //       setStats({
+  //         totalPatients: 24,
+  //         totalAssignments: 48,
+  //         completedAssignments: 32,
+  //         pendingAssignments: 16,
+  //         recentActivity: [
+  //           {
+  //             id: 1,
+  //             title: 'Giovanni Rossi completed Barkley ADHD Scale',
+  //             timestamp: '2 hours ago',
+  //             type: 'result',
+  //           },
+  //           {
+  //             id: 2,
+  //             title: 'Maria Bianchi assigned 3 new questionnaires',
+  //             timestamp: '4 hours ago',
+  //             type: 'assignment',
+  //           },
+  //           {
+  //             id: 3,
+  //             title: 'New patient: Francesco Verdi registered',
+  //             timestamp: '1 day ago',
+  //             type: 'patient',
+  //           },
+  //         ],
+  //       });
+  //     } catch (err: any) {
+  //       setError(err?.message || 'Failed to load dashboard data');
+  //     } finally {
+  //       setIsLoading(false);
+  //     }
+  //   };
 
-    loadStats();
-  }, []);
+  //   loadStats();
+  // }, []);
 
   if (isLoading) {
     return (
