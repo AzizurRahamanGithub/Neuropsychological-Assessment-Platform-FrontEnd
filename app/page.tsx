@@ -147,7 +147,6 @@
 
 
 
-
 'use client';
 
 import React, { useState } from 'react';
@@ -168,7 +167,41 @@ type LoginResponse = {
 };
 
 const API_BASE =
-  process.env.NEXT_PUBLIC_API_BASE_URL || 'http://10.0.30.18:8013'; // change if needed
+  process.env.NEXT_PUBLIC_API_BASE_URL || 'http://10.0.30.73:8000'; // change if needed
+
+/**
+ * =========================
+ * DEV AUTH BYPASS (TEMP)
+ * =========================
+ * Purpose: While development is ongoing, allow login without backend auth.
+ * Safety guards:
+ *  - Works ONLY when NODE_ENV !== 'production'
+ *  - Requires NEXT_PUBLIC_DEV_BYPASS_AUTH=true
+ *  - Optional host allowlist via NEXT_PUBLIC_DEV_BYPASS_HOSTS
+ *
+ * How to enable (dev only) in .env.local:
+ *   NEXT_PUBLIC_DEV_BYPASS_AUTH=true
+ *   NEXT_PUBLIC_DEV_BYPASS_HOSTS=localhost,127.0.0.1,10.0.30.73
+ *
+ * How to disable later:
+ *   - remove NEXT_PUBLIC_DEV_BYPASS_AUTH or set it to false
+ *   - (and/or) delete the bypass block inside handleLogin()
+ */
+const DEV_BYPASS_ENABLED =
+  process.env.NEXT_PUBLIC_DEV_BYPASS_AUTH === 'true' &&
+  process.env.NODE_ENV !== 'production';
+
+const isHostAllowedForBypass = () => {
+  if (typeof window === 'undefined') return false;
+
+  const raw = process.env.NEXT_PUBLIC_DEV_BYPASS_HOSTS || '';
+  // If you don't set hosts, default to allowing localhost only (safer)
+  const allowedHosts = raw
+    ? raw.split(',').map((s) => s.trim()).filter(Boolean)
+    : ['localhost', '127.0.0.1'];
+
+  return allowedHosts.includes(window.location.hostname);
+};
 
 export default function AdminLogin() {
   const router = useRouter();
@@ -185,6 +218,25 @@ export default function AdminLogin() {
     setIsLoading(true);
 
     try {
+      /**
+       * =========================
+       * BYPASS LOGIN (TEMP)
+       * =========================
+       * Accept ANY email/password and instantly "login"
+       * ONLY in dev environment + when bypass enabled + host allowed.
+       *
+       * Remove this whole block when production auth is ready.
+       */
+      if (DEV_BYPASS_ENABLED && isHostAllowedForBypass()) {
+        localStorage.setItem('accessToken', 'dev-bypass-access-token');
+        localStorage.setItem('refreshToken', 'dev-bypass-refresh-token');
+
+        // redirect
+        router.push('/admin/dashboard/patients');
+        return;
+      }
+
+      // REAL BACKEND LOGIN (production-ready path)
       const res = await fetch(`${API_BASE}/api/v1/auth/login/`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -196,7 +248,6 @@ export default function AdminLogin() {
       const data: LoginResponse = await res.json().catch(() => ({}));
 
       if (!res.ok) {
-        // Try to show meaningful backend errors
         const msg =
           data?.detail ||
           data?.message ||
@@ -210,7 +261,7 @@ export default function AdminLogin() {
       if (!data.access && data.token) localStorage.setItem('accessToken', data.token);
 
       // redirect
-      router.push('/admin/dashboard');
+      router.push('/admin/dashboard/patients');
     } catch (err: any) {
       setError(err?.message || 'Login failed.');
       console.error('Login error:', err);
@@ -288,7 +339,7 @@ export default function AdminLogin() {
         </Card>
 
         <div className="text-center mt-6">
-          <Link href="/" className="text-sm text-gray-600 hover:text-gray-900">
+          <Link href="/admin/dashboard/patients" className="text-sm text-gray-600 hover:text-gray-900">
             ← Back to Home
           </Link>
         </div>

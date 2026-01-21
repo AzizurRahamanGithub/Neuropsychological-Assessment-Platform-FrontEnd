@@ -29,7 +29,7 @@ export default function AdminLayout({
   const handleLogout = () => {
     localStorage.removeItem('accessToken');
     localStorage.removeItem('refreshToken');
-    router.push('/admin/login');
+    router.push('/');
   };
 
   const navItems = [
@@ -50,7 +50,7 @@ export default function AdminLayout({
     },
     {
       label: 'Results',
-      href: '/',
+      href: '/admin/dashboard/results',
       icon: BarChart3,
     },
     // {
