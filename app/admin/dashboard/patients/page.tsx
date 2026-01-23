@@ -16,10 +16,14 @@ import {
 } from '@/components/ui/table';
 import { Plus, Search, Edit2, Trash2, Eye, AlertCircle, X } from 'lucide-react';
 import type { Patient } from '@/types';
-import { useSearchParams } from 'next/navigation';
 
 const Loading = () => null;
 
+// ---------------- API ----------------
+const API_BASE = 'http://10.0.30.73:8000/api/v1';
+const PATIENTS_LIST_URL = `${API_BASE}/patients/list/`;
+
+// ---------------- Types ----------------
 type Sex = 'M' | 'F' | 'O';
 type Handedness = 'right' | 'left';
 
@@ -28,8 +32,95 @@ type PatientForm = {
   surname: string;
   sex: Sex | '';
   dateOfBirth: string; // YYYY-MM-DD
-  yearsOfEducation: string; // keep as string for input then parse
+  yearsOfEducation: string; // keep string for input then parse
   handedness: Handedness | '';
+};
+
+type ApiPatient = {
+  id: number;
+  name: string;
+  surname: string;
+  sex: string; // "male"/"female"/"other"
+  birth: string;
+  education: number;
+  handedness: string;
+  created_at: string;
+  updated_at: string;
+};
+
+type ApiListResponse = {
+  success: boolean;
+  status_code: number;
+  message: string;
+  data: ApiPatient[];
+};
+
+// ---------------- Helpers ----------------
+const apiSexToUiSex = (sex: string): Sex => {
+  const s = (sex || '').toLowerCase();
+  if (s === 'male' || s === 'm') return 'M';
+  if (s === 'female' || s === 'f') return 'F';
+  return 'O';
+};
+
+const uiSexToApiSex = (sex: Sex): string => {
+  if (sex === 'M') return 'male';
+  if (sex === 'F') return 'female';
+  return 'other';
+};
+
+const mapApiPatientToUi = (p: ApiPatient): Patient => ({
+  id: p.id,
+  name: p.name,
+  surname: p.surname,
+  sex: apiSexToUiSex(p.sex) as any,
+  dateOfBirth: p.birth,
+  yearsOfEducation: p.education,
+  handedness: (p.handedness || '').toLowerCase() as any,
+  createdAt: p.created_at,
+  updatedAt: p.updated_at,
+});
+
+const getAge = (dob?: string) => {
+  if (!dob) return '';
+  const d = new Date(dob);
+  if (Number.isNaN(d.getTime())) return '';
+  const today = new Date();
+  let age = today.getFullYear() - d.getFullYear();
+  const m = today.getMonth() - d.getMonth();
+  if (m < 0 || (m === 0 && today.getDate() < d.getDate())) age--;
+  return String(age);
+};
+
+// ✅ Search across: name, surname, full name, id, sex, dob, age, education, handedness, created/updated
+const applySearch = (base: Patient[], term: string) => {
+  const t = term.trim().toLowerCase();
+  if (!t) return base;
+
+  return base.filter((p) => {
+    const age = getAge(p.dateOfBirth);
+    const sexLabel = p.sex === 'M' ? 'male' : p.sex === 'F' ? 'female' : 'other';
+
+    const haystack = [
+      p.name,
+      p.surname,
+      `${p.name} ${p.surname}`,
+      String(p.id ?? ''),
+      p.sex,
+      sexLabel,
+      p.dateOfBirth,
+      age,
+      String(p.yearsOfEducation ?? ''),
+      p.handedness ?? '',
+      p.createdAt ?? '',
+      p.updatedAt ?? '',
+    ]
+      .filter(Boolean)
+      .join(' ')
+      .toLowerCase();
+
+    return haystack.includes(t);
+  });
 };
 
 export default function PatientsPage() {
@@ -38,7 +129,6 @@ export default function PatientsPage() {
   const [searchTerm, setSearchTerm] = useState('');
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string>('');
-  const searchParams = useSearchParams();
 
   // ---- Modal state ----
   const [isAddOpen, setIsAddOpen] = useState(false);
@@ -52,74 +142,36 @@ export default function PatientsPage() {
   });
   const [formError, setFormError] = useState<string>('');
 
-  useEffect(() => {
-    loadPatients();
-  }, []);
-
   const loadPatients = async () => {
     try {
       setIsLoading(true);
-      const token = localStorage.getItem('accessToken');
+      setError('');
 
+      const token = localStorage.getItem('accessToken');
       if (!token) {
         setError('Authentication required');
         return;
       }
 
-      // Mock data - replace with actual API call
-      const mockPatients: Patient[] = [
-        {
-          id: 1,
-          userId: 1,
-          name: 'Giovanni',
-          surname: 'Rossi',
-          sex: 'M',
-          dateOfBirth: '1990-05-15',
-          yearsOfEducation: 13,
-          handedness:"Left",
-          createdAt: '2024-01-10',
-          updatedAt: '2024-01-10',
+      const res = await fetch(PATIENTS_LIST_URL, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`, // যদি Token auth হয়: `Token ${token}`
         },
-        {
-          id: 2,
-          userId: 2,
-          name: 'Maria',
-          surname: 'Bianchi',
-          sex: 'F',
-          dateOfBirth: '1988-03-22',
-          yearsOfEducation: 16,
-          handedness:"Left",
-          createdAt: '2024-01-09',
-          updatedAt: '2024-01-09',
-        },
-        {
-          id: 3,
-          userId: 3,
-          name: 'Paolo',
-          surname: 'Verdi',
-          sex: 'M',
-          dateOfBirth: '1995-07-08',
-          yearsOfEducation: 14,
-          handedness:"Left",
-          createdAt: '2024-01-08',
-          updatedAt: '2024-01-08',
-        },
-        {
-          id: 4,
-          userId: 4,
-          name: 'Laura',
-          surname: 'Rizzo',
-          sex: 'F',
-          dateOfBirth: '1992-11-30',
-          yearsOfEducation: 13,
-          handedness:"Left",
-          createdAt: '2024-01-07',
-          updatedAt: '2024-01-07',
-        },
-      ];
+        cache: 'no-store',
+      });
 
-      setPatients(mockPatients);
-      setFilteredPatients(mockPatients);
+      const json: ApiListResponse = await res.json().catch(() => ({} as any));
+
+      if (!res.ok || !json?.success) {
+        throw new Error(json?.message || 'Failed to load patients');
+      }
+
+      const list = (json.data || []).map(mapApiPatientToUi);
+
+      setPatients(list);
+      setFilteredPatients(applySearch(list, searchTerm));
     } catch (err: any) {
       setError(err?.message || 'Failed to load patients');
     } finally {
@@ -127,30 +179,24 @@ export default function PatientsPage() {
     }
   };
 
-  const applySearch = (base: Patient[], term: string) => {
-    const t = term.trim().toLowerCase();
-    if (!t) return base;
-    return base.filter((patient) => {
-      const fullName = `${patient.name} ${patient.surname}`.toLowerCase();
-      return fullName.includes(t);
-    });
-  };
+  useEffect(() => {
+    loadPatients();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
-  const handleSearch = (term: string) => {
-    setSearchTerm(term);
-    setFilteredPatients(applySearch(patients, term));
-  };
+  // ✅ keep filtered list synced
+  useEffect(() => {
+    setFilteredPatients(applySearch(patients, searchTerm));
+  }, [patients, searchTerm]);
+
+  const handleSearch = (term: string) => setSearchTerm(term);
 
   const handleDelete = async (patientId: number) => {
     if (!confirm('Are you sure you want to delete this patient?')) return;
 
-    try {
-      const next = patients.filter((p) => p.id !== patientId);
-      setPatients(next);
-      setFilteredPatients(applySearch(next, searchTerm));
-    } catch (err: any) {
-      setError('Failed to delete patient');
-    }
+    // TODO: delete endpoint থাকলে integrate করবো
+    const next = patients.filter((p) => p.id !== patientId);
+    setPatients(next);
   };
 
   // ---- Add modal handlers ----
@@ -192,52 +238,63 @@ export default function PatientsPage() {
       return;
     }
 
-    // TODO (later): replace with API call:
-    // await fetch(... create patient ...)
-    // Use response patient as createdPatient
+    try {
+      const token = localStorage.getItem('accessToken');
+      if (!token) {
+        setFormError('Authentication required');
+        return;
+      }
 
-    const now = new Date().toISOString().slice(0, 10);
-    const nextId = patients.length ? Math.max(...patients.map((p) => p.id)) + 1 : 1;
+      const payload = {
+        name: form.name.trim(),
+        surname: form.surname.trim(),
+        sex: uiSexToApiSex(form.sex as Sex),
+        birth: form.dateOfBirth,
+        education: Number(form.yearsOfEducation),
+        handedness: form.handedness, // 'right' | 'left'
+      };
 
-    const createdPatient: Patient = {
-      id: nextId,
-      userId: nextId, // mock
-      name: form.name.trim(),
-      surname: form.surname.trim(),
-      sex: form.sex as any,
-      dateOfBirth: form.dateOfBirth,
-      yearsOfEducation: Number(form.yearsOfEducation),
-      handedness: form.handedness as any,
-      createdAt: now,
-      updatedAt: now,
-    };
+      const res = await fetch(PATIENTS_LIST_URL, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`, // যদি Token auth হয়: `Token ${token}`
+        },
+        body: JSON.stringify(payload),
+      });
 
-    // Note: handedness is collected now but not stored in Patient type.
-    // If you want it saved/visible, add it to your backend + Patient type + table column.
-    // (keeping it minimal for now)
+      const json = await res.json().catch(() => ({} as any));
 
-    const next = [createdPatient, ...patients];
-    setPatients(next);
-    setFilteredPatients(applySearch(next, searchTerm));
-    closeAdd();
+      if (!res.ok || !json?.success) {
+        const errMsg =
+          json?.message ||
+          (typeof json?.data === 'string' ? json.data : '') ||
+          'Failed to create patient';
+        throw new Error(errMsg);
+      }
+
+      await loadPatients(); // most reliable
+      closeAdd();
+    } catch (err: any) {
+      setFormError(err?.message || 'Failed to create patient');
+    }
   };
 
   return (
     <Suspense fallback={<Loading />}>
       <div className="space-y-6">
         {/* Header */}
-        <div className="flex items-center justify-between">
+        {/* <div className="flex items-center justify-between">
           <div>
             <h1 className="text-3xl font-bold text-gray-900">Patients</h1>
             <p className="text-gray-600 mt-1">Manage your patient profiles</p>
           </div>
 
-          {/* ✅ Modal trigger */}
           <Button className="gap-2" onClick={openAdd}>
             <Plus size={20} />
             Add Patient
           </Button>
-        </div>
+        </div> */}
 
         {error && (
           <Alert variant="destructive">
@@ -256,7 +313,7 @@ export default function PatientsPage() {
               <div className="flex-1 relative">
                 <Search className="absolute left-3 top-3 text-gray-400" size={20} />
                 <Input
-                  placeholder="Search by name..."
+                  placeholder="Search by name, age, sex, education..."
                   value={searchTerm}
                   onChange={(e) => handleSearch(e.target.value)}
                   className="pl-10"
@@ -299,7 +356,9 @@ export default function PatientsPage() {
                         <TableCell className="font-medium">
                           {patient.name} {patient.surname}
                         </TableCell>
-                        <TableCell>{patient.sex || '–'}</TableCell>
+                        <TableCell>
+                          {patient.sex === 'M' ? 'Male' : patient.sex === 'F' ? 'Female' : 'Other'}
+                        </TableCell>
                         <TableCell>
                           {patient.dateOfBirth
                             ? new Date(patient.dateOfBirth).toLocaleDateString('it-IT')
@@ -308,7 +367,7 @@ export default function PatientsPage() {
                         <TableCell>{patient.yearsOfEducation || '–'} years</TableCell>
                         <TableCell>{patient.handedness || '–'}</TableCell>
                         <TableCell className="text-sm text-gray-600">
-                          {new Date(patient.createdAt).toLocaleDateString('it-IT')}
+                          {patient.createdAt ? new Date(patient.createdAt).toLocaleDateString('it-IT') : '–'}
                         </TableCell>
                         <TableCell className="text-right">
                           <div className="flex gap-2 justify-end">
@@ -342,14 +401,11 @@ export default function PatientsPage() {
           </CardContent>
         </Card>
 
-        {/* =========================
-            ADD PATIENT MODAL
-            ========================= */}
+        {/* ADD PATIENT MODAL */}
         {isAddOpen && (
           <div
             className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
             onMouseDown={(e) => {
-              // click outside closes
               if (e.target === e.currentTarget) closeAdd();
             }}
           >
@@ -448,9 +504,7 @@ export default function PatientsPage() {
                 <Button variant="outline" onClick={closeAdd}>
                   Cancel
                 </Button>
-                <Button onClick={handleAddPatient}>
-                  Add Patient
-                </Button>
+                <Button onClick={handleAddPatient}>Add Patient</Button>
               </div>
             </div>
           </div>

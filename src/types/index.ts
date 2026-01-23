@@ -140,7 +140,6 @@ export interface ADHDMetrics {
   totaleAdhPunteggio: number;
   totaleAdhSintomi: number;
   iperattivitaImpulsivitaPunteggio: number;
-  iperattivitaImpulsivitaSintomi: number;
 }
 
 export interface QuestionnaireResult {

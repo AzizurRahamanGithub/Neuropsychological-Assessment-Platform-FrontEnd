@@ -1,15 +1,18 @@
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
+import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+
+import { useAppDispatch, useAppSelector } from '@/src/store/hooks';
+import { fetchPatients, setSelectedPatientId } from '@/src/store/slices/patientsSlice';
+
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Checkbox } from '@/components/ui/checkbox';
-import { QUESTIONNAIRES } from '@/lib/questionnaires';
-import { useRouter } from 'next/navigation';
-import { Trash2 } from 'lucide-react';
+
 import {
   Table,
   TableBody,
@@ -18,6 +21,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
+
 import {
   Select,
   SelectContent,
@@ -25,21 +29,18 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+
 import {
   Plus,
   Copy,
   Mail,
   CheckCircle,
   AlertCircle,
+  Trash2,
 } from 'lucide-react';
-import type { Questionnaire } from '@/types';
 
-interface PatientWithAssignments {
-  id: number;
-  name: string;
-  surname: string;
-  assignmentCount: number;
-}
+import { QUESTIONNAIRES } from '@/lib/questionnaires';
+import type { Questionnaire, Patient } from '@/types';
 
 interface GeneratedLink {
   type: 'all_self' | 'single_other';
@@ -50,45 +51,36 @@ interface GeneratedLink {
 
 export default function QuestionnairesPage() {
   const router = useRouter();
-  const [questionnaires, setQuestionnaires] = useState<Questionnaire[]>([]);
-  const [selectedQuestionnaires, setSelectedQuestionnaires] = useState<number[]>([]);
-  const [selectedPatient, setSelectedPatient] = useState<string>('');
-  const [patients, setPatients] = useState<PatientWithAssignments[]>([]);
-  const [generatedLinks, setGeneratedLinks] = useState<GeneratedLink[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string>('');
-  const [copiedLink, setCopiedLink] = useState<string>('');
-  const [showAssignDialog, setShowAssignDialog] = useState(false);
 
-
-  const handleDeleteQuestionnaire = (id: number) => {
-  if (!confirm('Delete this questionnaire?')) return;
-  setQuestionnaires((prev) => prev.filter((x) => x.id !== id));
-  setSelectedQuestionnaires((prev) => prev.filter((qid) => qid !== id));
-};
-
-
-  const [qSearch, setQSearch] = useState("");
-
-  const filteredQuestionnaires = useMemo(() => {
-    const t = qSearch.trim().toLowerCase();
-    if (!t) return questionnaires;
-    return questionnaires.filter((q) =>
-      `${q.name} ${q.description || ""} ${q.type || ""}`.toLowerCase().includes(t)
-    );
-  }, [qSearch, questionnaires]);
+  // ---------- Redux patients ----------
+  const dispatch = useAppDispatch();
+  const { list: patientList, isLoading: isPatientsLoading, selectedPatientId } =
+    useAppSelector((s) => s.patients);
 
   useEffect(() => {
-    loadData();
+    if (!patientList.length) dispatch(fetchPatients());
+  }, [dispatch, patientList.length]);
+
+  // ---------- Local questionnaires ----------
+  const [questionnaires, setQuestionnaires] = useState<Questionnaire[]>([]);
+  const [selectedQuestionnaires, setSelectedQuestionnaires] = useState<number[]>([]);
+  const [generatedLinks, setGeneratedLinks] = useState<GeneratedLink[]>([]);
+  const [error, setError] = useState<string>('');
+  const [copiedLink, setCopiedLink] = useState<string>('');
+
+  const [qLoading, setQLoading] = useState(true);
+  const [qSearch, setQSearch] = useState('');
+
+  useEffect(() => {
+    loadQuestionnaires();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-
-
-  const loadData = async () => {
+  const loadQuestionnaires = async () => {
     try {
-      setIsLoading(true);
+      setQLoading(true);
+      setError('');
 
-      // ✅ from registry (each questionnaire has its own file/page rules)
       const mockQuestionnaires: Questionnaire[] = QUESTIONNAIRES.map((q) => ({
         id: q.id,
         code: q.code,
@@ -100,21 +92,26 @@ export default function QuestionnairesPage() {
         createdAt: '2024-01-01',
       }));
 
-      // Mock patients data
-      const mockPatients: PatientWithAssignments[] = [
-        { id: 1, name: 'Giovanni', surname: 'Rossi', assignmentCount: 2 },
-        { id: 2, name: 'Maria', surname: 'Bianchi', assignmentCount: 1 },
-        { id: 3, name: 'Paolo', surname: 'Verdi', assignmentCount: 0 },
-        { id: 4, name: 'Laura', surname: 'Rizzo', assignmentCount: 3 },
-      ];
-
       setQuestionnaires(mockQuestionnaires);
-      setPatients(mockPatients);
     } catch (err: any) {
-      setError(err?.message || 'Failed to load data');
+      setError(err?.message || 'Failed to load questionnaires');
     } finally {
-      setIsLoading(false);
+      setQLoading(false);
     }
+  };
+
+  const filteredQuestionnaires = useMemo(() => {
+    const t = qSearch.trim().toLowerCase();
+    if (!t) return questionnaires;
+    return questionnaires.filter((q) =>
+      `${q.name} ${q.description || ''} ${q.type || ''}`.toLowerCase().includes(t),
+    );
+  }, [qSearch, questionnaires]);
+
+  const handleDeleteQuestionnaire = (id: number) => {
+    if (!confirm('Delete this questionnaire?')) return;
+    setQuestionnaires((prev) => prev.filter((x) => x.id !== id));
+    setSelectedQuestionnaires((prev) => prev.filter((qid) => qid !== id));
   };
 
   const handleSelectQuestionnaire = (questionnaireId: number) => {
@@ -127,13 +124,13 @@ export default function QuestionnairesPage() {
 
   const handleAssignQuestionnaires = async () => {
     setError('');
-    if (!selectedPatient || selectedQuestionnaires.length === 0) {
+
+    if (!selectedPatientId || selectedQuestionnaires.length === 0) {
       setError('Please select a patient and at least one questionnaire');
       return;
     }
 
     try {
-      // Generate mock links
       const selfQuestionnaires = questionnaires.filter(
         (q) => selectedQuestionnaires.includes(q.id) && q.type === 'SELF',
       );
@@ -175,12 +172,14 @@ export default function QuestionnairesPage() {
       setCopiedLink(url);
       setTimeout(() => setCopiedLink(''), 2000);
     } catch {
-      console.error('Failed to copy');
+      // ignore
     }
   };
 
+  const selectedPatientName =
+    patientList.find((p: Patient) => p.id.toString() === selectedPatientId)?.name || '';
 
-  if (isLoading) {
+  if (qLoading) {
     return (
       <div className="flex items-center justify-center h-96">
         <div className="text-gray-600">Loading questionnaires...</div>
@@ -220,23 +219,28 @@ export default function QuestionnairesPage() {
               Select a patient and choose which questionnaires to assign
             </CardDescription>
           </CardHeader>
+
           <CardContent className="space-y-6">
-            {/* Patient Selection */}
+            {/* ✅ Patient Selection (Redux list -> only name) */}
             <div className="space-y-2">
               <label className="block text-sm font-medium text-gray-700">
                 Select Patient
               </label>
-              <Select value={selectedPatient} onValueChange={setSelectedPatient}>
+
+              <Select
+                value={selectedPatientId}
+                onValueChange={(v) => dispatch(setSelectedPatientId(v))}
+              >
                 <SelectTrigger>
-                  <SelectValue placeholder="Choose a patient..." />
+                  <SelectValue
+                    placeholder={isPatientsLoading ? 'Loading...' : 'Choose a patient...'}
+                  />
                 </SelectTrigger>
+
                 <SelectContent>
-                  {patients.map((patient) => (
+                  {patientList.map((patient: Patient) => (
                     <SelectItem key={patient.id} value={patient.id.toString()}>
-                      {patient.name} {patient.surname}{' '}
-                      <span className="text-xs text-gray-500">
-                        ({patient.assignmentCount} assigned)
-                      </span>
+                      {patient.name}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -249,7 +253,7 @@ export default function QuestionnairesPage() {
                 Select Questionnaires ({selectedQuestionnaires.length} selected)
               </label>
 
-              {/* ✅ Search */}
+              {/* Search */}
               <Input
                 placeholder="Search questionnaires..."
                 value={qSearch}
@@ -290,11 +294,10 @@ export default function QuestionnairesPage() {
               </div>
             </div>
 
-
             <Button
               onClick={handleAssignQuestionnaires}
               className="w-full"
-              disabled={!selectedPatient || selectedQuestionnaires.length === 0}
+              disabled={!selectedPatientId || selectedQuestionnaires.length === 0}
             >
               <CheckCircle className="mr-2" size={20} />
               Generate Links & Assign
@@ -309,19 +312,20 @@ export default function QuestionnairesPage() {
               Questionnaires Assigned Successfully
             </CardTitle>
             <CardDescription>
-              Generated secure links for{' '}
-              {patients.find((p) => p.id.toString() === selectedPatient)?.name}
+              Generated secure links for {selectedPatientName}
             </CardDescription>
           </CardHeader>
+
           <CardContent className="space-y-4">
             {generatedLinks.map((link, index) => (
-              <div key={index} className="bg-white p-4 rounded-lg border border-green-200">
+              <div
+                key={index}
+                className="bg-white p-4 rounded-lg border border-green-200"
+              >
                 <div className="flex items-start justify-between mb-3">
                   <div>
                     <p className="font-semibold text-gray-900">{link.questionnaireName}</p>
-                    <p className="text-sm text-gray-600">
-                      Expires: {link.expiresAt}
-                    </p>
+                    <p className="text-sm text-gray-600">Expires: {link.expiresAt}</p>
                   </div>
                   <span className="px-2 py-1 bg-blue-100 text-blue-700 text-xs rounded">
                     {link.type === 'all_self' ? 'Self-Report' : 'Informant'}
@@ -329,11 +333,7 @@ export default function QuestionnairesPage() {
                 </div>
 
                 <div className="flex gap-2">
-                  <Input
-                    value={link.url}
-                    readOnly
-                    className="text-sm font-mono"
-                  />
+                  <Input value={link.url} readOnly className="text-sm font-mono" />
                   <Button
                     variant="outline"
                     onClick={() => copyToClipboard(link.url)}
@@ -345,11 +345,7 @@ export default function QuestionnairesPage() {
                 </div>
 
                 <div className="mt-3 flex gap-2">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="gap-1 bg-transparent"
-                  >
+                  <Button variant="outline" size="sm" className="gap-1 bg-transparent">
                     <Mail size={16} />
                     Send Email
                   </Button>
@@ -366,7 +362,7 @@ export default function QuestionnairesPage() {
               onClick={() => {
                 setGeneratedLinks([]);
                 setSelectedQuestionnaires([]);
-                setSelectedPatient('');
+                dispatch(setSelectedPatientId(''));
               }}
             >
               Assign More Questionnaires
@@ -379,10 +375,9 @@ export default function QuestionnairesPage() {
       <Card>
         <CardHeader>
           <CardTitle>Available Questionnaires</CardTitle>
-          <CardDescription>
-            Complete list of diagnostic assessments
-          </CardDescription>
+          <CardDescription>Complete list of diagnostic assessments</CardDescription>
         </CardHeader>
+
         <CardContent>
           <div className="overflow-x-auto">
             <Table>
@@ -395,6 +390,7 @@ export default function QuestionnairesPage() {
                   <TableHead className="font-semibold text-right">Actions</TableHead>
                 </TableRow>
               </TableHeader>
+
               <TableBody>
                 {filteredQuestionnaires.map((q) => (
                   <TableRow
@@ -414,34 +410,35 @@ export default function QuestionnairesPage() {
                       <div className="flex flex-col">
                         <span className="text-gray-900">{q.name}</span>
                         {q.description ? (
-                          <span className="text-xs text-gray-500 line-clamp-1">{q.description}</span>
+                          <span className="text-xs text-gray-500 line-clamp-1">
+                            {q.description}
+                          </span>
                         ) : null}
                       </div>
                     </TableCell>
 
                     <TableCell>
                       <span
-                        className={`inline-flex items-center px-2 py-1 rounded text-xs font-medium ${q.type === 'SELF'
+                        className={`inline-flex items-center px-2 py-1 rounded text-xs font-medium ${
+                          q.type === 'SELF'
                             ? 'bg-blue-100 text-blue-700'
                             : 'bg-green-100 text-green-700'
-                          }`}
+                        }`}
                       >
                         {q.type}
                       </span>
                     </TableCell>
 
                     <TableCell className="text-gray-700">{q.category}</TableCell>
-
                     <TableCell className="text-gray-700">{q.questionCount}</TableCell>
 
-                    {/* Actions */}
                     <TableCell className="text-right">
                       <div className="flex justify-end gap-2">
                         <Button
                           variant="outline"
                           size="sm"
                           onClick={(e) => {
-                            e.stopPropagation(); // ✅ row click বন্ধ
+                            e.stopPropagation();
                             router.push(`/admin/dashboard/questionnaires/${q.code}`);
                           }}
                         >
@@ -453,7 +450,7 @@ export default function QuestionnairesPage() {
                           size="sm"
                           className="text-red-600 hover:text-red-700 hover:bg-red-50"
                           onClick={(e) => {
-                            e.stopPropagation(); // ✅ row click বন্ধ
+                            e.stopPropagation();
                             handleDeleteQuestionnaire(q.id);
                           }}
                           title="Delete"
@@ -465,7 +462,6 @@ export default function QuestionnairesPage() {
                   </TableRow>
                 ))}
               </TableBody>
-
             </Table>
           </div>
         </CardContent>
