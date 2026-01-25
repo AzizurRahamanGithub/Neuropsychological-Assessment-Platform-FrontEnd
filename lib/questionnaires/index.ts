@@ -1,30 +1,12 @@
-export type QuestionnaireType = 'SELF' | 'OTHER';
+import type { QuestionnaireDef } from "./types";
 
-export type QuestionOption = { value: string; label: string };
+import { BAARS_IV_ATTUALE_SELF, computeBAARSIVSelf } from "./BAARS-IV-attuale-self/questionnaires";
 
-export type QuestionDef = {
-  id: string;
-  text: string;
-  options: QuestionOption[];
+export type QuestionnaireModule = {
+  def: QuestionnaireDef;
+  compute: (answers: Record<string, any>) => Record<string, string>;
 };
 
-export type QuestionnaireDef = {
-  id: number;
-  code: string;
-  name: string;
-  description: string;
-  type: QuestionnaireType;
-  category: string;
-  questions: QuestionDef[];
-  // OTHER type হলে যারা fillup করবে
-  respondents?: string[];
-};
-
-// import defs
-import { questionlist1 } from './q1';
-import { questionlist2 } from './q2';
-
-export const QUESTIONNAIRES: QuestionnaireDef[] = [questionlist1, questionlist2];
-
-export const getQuestionnaireByCode = (code: string) =>
-  QUESTIONNAIRES.find(q => q.code === code);
+export const QUESTIONNAIRE_REGISTRY: QuestionnaireModule[] = [
+  { def: BAARS_IV_ATTUALE_SELF, compute: computeBAARSIVSelf },
+];

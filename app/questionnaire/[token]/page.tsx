@@ -18,7 +18,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { ChevronLeft, ChevronRight, AlertCircle, Check } from 'lucide-react';
-import { useAutoSave } from '@/hooks/useAutoSave';
+import { useAutoSave } from '@/src/hooks/useAutoSave';
 import type { QuestionnaireDetail, Response } from '@/types';
 
 interface QuestionnaireState {
@@ -52,73 +52,6 @@ export default function QuestionnairePage() {
     const loadQuestionnaires = async () => {
       try {
         setIsLoading(true);
-
-        // Mock data - replace with actual API call
-        const mockQuestionnaires: QuestionnaireDetail[] = [
-          {
-            id: 1,
-            code: 'BAARS_IV',
-            name: 'Barkley Adult ADHD Rating Scale-IV',
-            description: 'Comprehensive ADHD assessment for adults',
-            type: 'SELF',
-            category: 'ADHD Assessment',
-            questionCount: 27,
-            version: 'IV',
-            createdAt: '2024-01-01',
-            questions: [
-              {
-                id: 1,
-                questionnaireId: 1,
-                questionText: 'Difficoltà a concentrarsi su compiti o attività',
-                questionType: 'single_choice',
-                questionNumber: 1,
-                isMandatory: true,
-                scoringField: 'disattenzione',
-                options: [
-                  { id: 1, optionText: 'Mai (0)', optionValue: 0, optionOrder: 1 },
-                  { id: 2, optionText: 'Raramente (1)', optionValue: 1, optionOrder: 2 },
-                  { id: 3, optionText: 'A volte (2)', optionValue: 2, optionOrder: 3 },
-                  { id: 4, optionText: 'Spesso (3)', optionValue: 3, optionOrder: 4 },
-                  { id: 5, optionText: 'Molto spesso (4)', optionValue: 4, optionOrder: 5 },
-                ],
-              },
-              {
-                id: 2,
-                questionnaireId: 1,
-                questionText: 'Procrastinazione o difficoltà ad iniziare attività',
-                questionType: 'single_choice',
-                questionNumber: 2,
-                isMandatory: true,
-                scoringField: 'disattenzione',
-                options: [
-                  { id: 1, optionText: 'Mai (0)', optionValue: 0, optionOrder: 1 },
-                  { id: 2, optionText: 'Raramente (1)', optionValue: 1, optionOrder: 2 },
-                  { id: 3, optionText: 'A volte (2)', optionValue: 2, optionOrder: 3 },
-                  { id: 4, optionText: 'Spesso (3)', optionValue: 3, optionOrder: 4 },
-                  { id: 5, optionText: 'Molto spesso (4)', optionValue: 4, optionOrder: 5 },
-                ],
-              },
-              {
-                id: 3,
-                questionnaireId: 1,
-                questionText: 'Distrazione durante il lavoro',
-                questionType: 'single_choice',
-                questionNumber: 3,
-                isMandatory: true,
-                scoringField: 'disattenzione',
-                options: [
-                  { id: 1, optionText: 'Mai (0)', optionValue: 0, optionOrder: 1 },
-                  { id: 2, optionText: 'Raramente (1)', optionValue: 1, optionOrder: 2 },
-                  { id: 3, optionText: 'A volte (2)', optionValue: 2, optionOrder: 3 },
-                  { id: 4, optionText: 'Spesso (3)', optionValue: 3, optionOrder: 4 },
-                  { id: 5, optionText: 'Molto spesso (4)', optionValue: 4, optionOrder: 5 },
-                ],
-              },
-            ],
-          },
-        ];
-
-        setQuestionnaires(mockQuestionnaires);
 
         // Try to resume progress from localStorage
         const savedState = localStorage.getItem(`questionnaire_${token}`);

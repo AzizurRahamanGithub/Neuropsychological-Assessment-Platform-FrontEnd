@@ -51,6 +51,8 @@ interface GeneratedLink {
 
 export default function QuestionnairesPage() {
   const router = useRouter();
+  const selfQs = QUESTIONNAIRES.filter(q => q.type === 'SELF');
+  const otherQs = QUESTIONNAIRES.filter(q => q.type === 'OTHER');
 
   // ---------- Redux patients ----------
   const dispatch = useAppDispatch();
