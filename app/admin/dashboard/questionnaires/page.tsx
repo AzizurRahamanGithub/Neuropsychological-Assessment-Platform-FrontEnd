@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 
@@ -13,34 +13,13 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Checkbox } from '@/components/ui/checkbox';
 
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
+import { Plus, Copy, Mail, CheckCircle, AlertCircle, Trash2 } from 'lucide-react';
 
-import {
-  Plus,
-  Copy,
-  Mail,
-  CheckCircle,
-  AlertCircle,
-  Trash2,
-} from 'lucide-react';
-
-import { QUESTIONNAIRES } from '@/lib/questionnaires';
-import type { Questionnaire, Patient } from '@/types';
+import { QUESTIONNAIRE_REGISTRY } from '@/lib/questionnaires'; // ✅ use src path
+import type { Patient, Questionnaire } from '@/src/types';
 
 interface GeneratedLink {
   type: 'all_self' | 'single_other';
@@ -51,8 +30,6 @@ interface GeneratedLink {
 
 export default function QuestionnairesPage() {
   const router = useRouter();
-  const selfQs = QUESTIONNAIRES.filter(q => q.type === 'SELF');
-  const otherQs = QUESTIONNAIRES.filter(q => q.type === 'OTHER');
 
   // ---------- Redux patients ----------
   const dispatch = useAppDispatch();
@@ -69,44 +46,44 @@ export default function QuestionnairesPage() {
   const [generatedLinks, setGeneratedLinks] = useState<GeneratedLink[]>([]);
   const [error, setError] = useState<string>('');
   const [copiedLink, setCopiedLink] = useState<string>('');
-
   const [qLoading, setQLoading] = useState(true);
   const [qSearch, setQSearch] = useState('');
 
   useEffect(() => {
-    loadQuestionnaires();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  const loadQuestionnaires = async () => {
     try {
       setQLoading(true);
       setError('');
 
-      const mockQuestionnaires: Questionnaire[] = QUESTIONNAIRES.map((q) => ({
-        id: q.id,
-        code: q.code,
-        name: q.name,
-        description: q.description,
-        type: q.type,
-        category: q.category,
-        questionCount: q.questions.length,
+      // ✅ registry is Record -> use values
+      const modules = Object.values(QUESTIONNAIRE_REGISTRY);
+
+      const list: Questionnaire[] = modules.map((m, idx) => ({
+        id: idx + 1,
+        code: m.def.formCode,              // ✅ details route uses this
+        name: m.def.name,
+        description: m.def.instruction,
+        type: m.def.type,                  // SELF / OTHER
+        category: m.def.code,              // group
+        questionCount: m.def.questions.length,
         createdAt: '2024-01-01',
       }));
 
-      setQuestionnaires(mockQuestionnaires);
+      setQuestionnaires(list);
     } catch (err: any) {
       setError(err?.message || 'Failed to load questionnaires');
     } finally {
       setQLoading(false);
     }
-  };
+  }, []);
 
   const filteredQuestionnaires = useMemo(() => {
     const t = qSearch.trim().toLowerCase();
     if (!t) return questionnaires;
+
     return questionnaires.filter((q) =>
-      `${q.name} ${q.description || ''} ${q.type || ''}`.toLowerCase().includes(t),
+      `${q.name} ${q.description || ''} ${q.type || ''} ${q.code || ''} ${q.category || ''}`
+        .toLowerCase()
+        .includes(t),
     );
   }, [qSearch, questionnaires]);
 
@@ -143,7 +120,7 @@ export default function QuestionnairesPage() {
       const links: GeneratedLink[] = [];
 
       if (selfQuestionnaires.length > 0) {
-        const token = Math.random().toString(36).substring(2, 15);
+        const token = crypto?.randomUUID?.() ?? Math.random().toString(36).slice(2);
         links.push({
           type: 'all_self',
           url: `${window.location.origin}/questionnaire/${token}`,
@@ -153,7 +130,7 @@ export default function QuestionnairesPage() {
       }
 
       otherQuestionnaires.forEach((q) => {
-        const token = Math.random().toString(36).substring(2, 15);
+        const token = crypto?.randomUUID?.() ?? Math.random().toString(36).slice(2);
         links.push({
           type: 'single_other',
           url: `${window.location.origin}/questionnaire/${token}`,
@@ -173,9 +150,7 @@ export default function QuestionnairesPage() {
       await navigator.clipboard.writeText(url);
       setCopiedLink(url);
       setTimeout(() => setCopiedLink(''), 2000);
-    } catch {
-      // ignore
-    }
+    } catch {}
   };
 
   const selectedPatientName =
@@ -197,12 +172,13 @@ export default function QuestionnairesPage() {
           <h1 className="text-3xl font-bold text-gray-900">Questionnaires</h1>
           <p className="text-gray-600 mt-1">Manage and assign assessments</p>
         </div>
-        <Link href="/admin/dashboard/questionnaires/add">
+
+        {/* <Link href="/admin/dashboard/questionnaires/add">
           <Button className="gap-2">
             <Plus size={20} />
             New Questionnaire
           </Button>
-        </Link>
+        </Link> */}
       </div>
 
       {error && (
@@ -217,17 +193,13 @@ export default function QuestionnairesPage() {
         <Card>
           <CardHeader>
             <CardTitle>Assign Questionnaires to Patient</CardTitle>
-            <CardDescription>
-              Select a patient and choose which questionnaires to assign
-            </CardDescription>
+            <CardDescription>Select a patient and choose which questionnaires to assign</CardDescription>
           </CardHeader>
 
           <CardContent className="space-y-6">
-            {/* ✅ Patient Selection (Redux list -> only name) */}
+            {/* Patient Selection */}
             <div className="space-y-2">
-              <label className="block text-sm font-medium text-gray-700">
-                Select Patient
-              </label>
+              <label className="block text-sm font-medium text-gray-700">Select Patient</label>
 
               <Select
                 value={selectedPatientId}
@@ -255,7 +227,6 @@ export default function QuestionnairesPage() {
                 Select Questionnaires ({selectedQuestionnaires.length} selected)
               </label>
 
-              {/* Search */}
               <Input
                 placeholder="Search questionnaires..."
                 value={qSearch}
@@ -313,17 +284,12 @@ export default function QuestionnairesPage() {
               <CheckCircle size={24} />
               Questionnaires Assigned Successfully
             </CardTitle>
-            <CardDescription>
-              Generated secure links for {selectedPatientName}
-            </CardDescription>
+            <CardDescription>Generated secure links for {selectedPatientName}</CardDescription>
           </CardHeader>
 
           <CardContent className="space-y-4">
             {generatedLinks.map((link, index) => (
-              <div
-                key={index}
-                className="bg-white p-4 rounded-lg border border-green-200"
-              >
+              <div key={index} className="bg-white p-4 rounded-lg border border-green-200">
                 <div className="flex items-start justify-between mb-3">
                   <div>
                     <p className="font-semibold text-gray-900">{link.questionnaireName}</p>
@@ -389,7 +355,6 @@ export default function QuestionnairesPage() {
                   <TableHead className="font-semibold">Type</TableHead>
                   <TableHead className="font-semibold">Category</TableHead>
                   <TableHead className="font-semibold">Questions</TableHead>
-                  <TableHead className="font-semibold text-right">Actions</TableHead>
                 </TableRow>
               </TableHeader>
 
@@ -434,33 +399,6 @@ export default function QuestionnairesPage() {
                     <TableCell className="text-gray-700">{q.category}</TableCell>
                     <TableCell className="text-gray-700">{q.questionCount}</TableCell>
 
-                    <TableCell className="text-right">
-                      <div className="flex justify-end gap-2">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            router.push(`/admin/dashboard/questionnaires/${q.code}`);
-                          }}
-                        >
-                          View
-                        </Button>
-
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="text-red-600 hover:text-red-700 hover:bg-red-50"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleDeleteQuestionnaire(q.id);
-                          }}
-                          title="Delete"
-                        >
-                          <Trash2 size={16} />
-                        </Button>
-                      </div>
-                    </TableCell>
                   </TableRow>
                 ))}
               </TableBody>

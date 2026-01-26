@@ -14,6 +14,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
+import {FileText} from 'lucide-react';
 import { ArrowLeft, CheckCircle, Clock, AlertCircle, Copy } from 'lucide-react';
 import type { PatientDetail, QuestionnaireAssignment } from '@/types';
 
@@ -129,8 +130,7 @@ export default function PatientDetailPage() {
     if (assignment.completionPercentage > 0) {
       return (
         <div className="flex items-center gap-1 bg-blue-100 text-blue-700 px-2 py-1 rounded text-sm">
-          <Clock size={16} />
-          {assignment.completionPercentage}% In Progress
+          <Clock size={16} /> In Progress
         </div>
       );
     }
@@ -187,9 +187,9 @@ export default function PatientDetailPage() {
           </h1>
           <p className="text-gray-600 mt-1">Patient ID: {patient.id}</p>
         </div>
-        <Link href={`/admin/dashboard/patients/${patient.id}/edit`}>
+        {/* <Link href={`/admin/dashboard/patients/${patient.id}/edit`}>
           <Button>Edit Patient</Button>
-        </Link>
+        </Link> */}
       </div>
 
       {/* Patient Information */}
@@ -291,7 +291,6 @@ export default function PatientDetailPage() {
                   <TableRow className="bg-gray-50">
                     <TableHead className="font-semibold">Questionnaire</TableHead>
                     <TableHead className="font-semibold">Type</TableHead>
-                    <TableHead className="font-semibold">Progress</TableHead>
                     <TableHead className="font-semibold">Status</TableHead>
                     <TableHead className="font-semibold">Assigned</TableHead>
                     <TableHead className="font-semibold">Actions</TableHead>
@@ -308,38 +307,20 @@ export default function PatientDetailPage() {
                           {assignment.questionnaire.type}
                         </span>
                       </TableCell>
-                      <TableCell>
-                        <div className="flex items-center gap-2">
-                          <div className="w-24 bg-gray-200 rounded-full h-2">
-                            <div
-                              className="bg-blue-600 h-2 rounded-full"
-                              style={{
-                                width: `${assignment.completionPercentage}%`,
-                              }}
-                            />
-                          </div>
-                          <span className="text-sm text-gray-600">
-                            {assignment.completionPercentage}%
-                          </span>
-                        </div>
-                      </TableCell>
                       <TableCell>{getStatusBadge(assignment)}</TableCell>
                       <TableCell className="text-sm text-gray-600">
                         {new Date(assignment.assignedAt).toLocaleDateString('it-IT')}
                       </TableCell>
                       <TableCell>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="gap-1"
-                          onClick={() => copyToClipboard(
-                            `${window.location.origin}/questionnaire/${assignment.id}`,
-                            assignment.id,
-                          )}
-                        >
-                          <Copy size={16} />
-                          {copiedLink === assignment.id ? 'Copied!' : 'Copy Link'}
-                        </Button>
+                                                    <Button
+                              variant="ghost"
+                              size="sm"
+                              className="gap-1"
+                              // onClick={() => handleExportWord(result.id)}
+                            >
+                              <FileText size={16} />
+                              Word
+                            </Button>
                       </TableCell>
                     </TableRow>
                   ))}

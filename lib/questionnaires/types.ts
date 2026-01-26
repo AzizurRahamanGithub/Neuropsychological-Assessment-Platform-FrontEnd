@@ -21,4 +21,5 @@ export type QuestionnaireDef = {
   name: string;
   instruction?: string;
   questions: Question[];
+  respondents?: string[];
 };

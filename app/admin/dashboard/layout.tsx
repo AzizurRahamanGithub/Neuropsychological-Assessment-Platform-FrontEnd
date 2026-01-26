@@ -48,11 +48,11 @@ export default function AdminLayout({
       href: '/admin/dashboard/questionnaires',
       icon: ClipboardList,
     },
-    {
-      label: 'Results',
-      href: '/admin/dashboard/results',
-      icon: BarChart3,
-    },
+    // {
+    //   label: 'Results',
+    //   href: '/admin/dashboard/results',
+    //   icon: BarChart3,
+    // },
     // {
     //   label: 'Settings',
     //   href: '/admin/dashboard/settings',

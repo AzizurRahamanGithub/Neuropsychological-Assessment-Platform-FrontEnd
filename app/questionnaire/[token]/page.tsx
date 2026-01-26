@@ -30,6 +30,11 @@ interface QuestionnaireState {
   };
   savedAt: Date | null;
 }
+import { QUESTIONNAIRE_REGISTRY } from "@/lib/questionnaires";
+
+const getModuleByFormCode = (formCode: string) => {
+  return QUESTIONNAIRE_REGISTRY.find((m) => m.def.formCode === formCode);
+};
 
 export default function QuestionnairePage() {
   const params = useParams();
