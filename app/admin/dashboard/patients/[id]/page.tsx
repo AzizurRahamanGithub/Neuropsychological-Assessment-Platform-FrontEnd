@@ -1,125 +1,138 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useRouter, useParams } from 'next/navigation';
+
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table';
-import {FileText} from 'lucide-react';
-import { ArrowLeft, CheckCircle, Clock, AlertCircle, Copy } from 'lucide-react';
-import type { PatientDetail, QuestionnaireAssignment } from '@/types';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+
+import { FileText, ArrowLeft, CheckCircle, Clock, AlertCircle } from 'lucide-react';
+
+import { useAppDispatch, useAppSelector } from '@/src/store/hooks';
+import { fetchPatientDetail, clearPatientDetail } from '@/src/store/slices/patientDetailSlice';
+
+/** -------- Types (match backend grouped response) -------- */
+type LinkType = 'all_self' | 'single_other';
+
+type ApiLink = {
+  link_id: number;
+  assignment_id: number;
+  link_type: LinkType;
+  token: string;
+  url: string | null;
+  questionnaires: string[];
+  report_by: string | null;
+  is_submitted: boolean;
+  submitted_at: string | null;
+  results: Record<string, Record<string, any>> | null;
+  created_at: string;
+};
+
+type ApiAssignmentGroup = {
+  assignment_id: number;
+  created_at: string;
+  is_completed?: boolean;
+  links: ApiLink[];
+  counts?: {
+    total: number;
+    submitted: number;
+    pending: number;
+  };
+};
+
+type ApiPatientStats = {
+  assignments_count: number;
+  assignments_completed: number;
+  by_type?: {
+    all_self: number;
+    single_other: number;
+  };
+};
+
+type ApiPatientDetail = {
+  id: number;
+  name: string | null;
+  surname: string | null;
+  sex: string | null; // "male" | "female" | "other"
+  birth: string | null;
+  education: number | null;
+  handedness: string | null; // "left" | "right"
+  created_at: string;
+  updated_at: string;
+
+  stats?: ApiPatientStats;
+
+  // ✅ NEW: grouped assignments
+  assignments?: ApiAssignmentGroup[];
+};
+
+const sexUi = (s?: string | null) => {
+  const v = String(s || '').toLowerCase();
+  if (v === 'male' || v === 'm') return 'M';
+  if (v === 'female' || v === 'f') return 'F';
+  return v ? 'O' : '–';
+};
 
 export default function PatientDetailPage() {
   const params = useParams();
   const router = useRouter();
-  const patientId = params.id as string;
+  const dispatch = useAppDispatch();
 
-  const [patient, setPatient] = useState<PatientDetail | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string>('');
+  const patientIdStr = params.id as string;
+  const patientId = Number(patientIdStr);
+
+  // ✅ from redux
+  const { data, isLoading, error } = useAppSelector((s) => s.patientDetail);
+
+  // local UI-only
   const [copiedLink, setCopiedLink] = useState<number | null>(null);
 
   useEffect(() => {
-    loadPatientDetail();
-  }, [patientId]);
+    if (!patientId || Number.isNaN(patientId)) return;
 
-  const loadPatientDetail = async () => {
-    try {
-      setIsLoading(true);
-      
-      // Mock data - replace with actual API call
-      const mockPatient: PatientDetail = {
-        id: 1,
-        userId: 1,
-        name: 'Giovanni',
-        surname: 'Rossi',
-        sex: 'M',
-        dateOfBirth: '1990-05-15',
-        yearsOfEducation: 13,
-        clinicianId: 1,
-        createdAt: '2024-01-10',
-        updatedAt: '2024-01-10',
-        assignments: [
-          {
-            id: 1,
-            patientId: 1,
-            questionnaireId: 1,
-            assignedBy: 1,
-            assignedAt: '2024-01-15',
-            completedAt: '2024-01-18',
-            completionPercentage: 100,
-            isCompleted: true,
-            questionnaire: {
-              id: 1,
-              code: 'BAARS_IV',
-              name: 'Barkley Adult ADHD Rating Scale-IV',
-              description: 'Comprehensive ADHD assessment',
-              type: 'SELF',
-              category: 'ADHD Assessment',
-              questionCount: 27,
-              version: 'IV',
-              createdAt: '2024-01-01',
-            },
-          },
-          {
-            id: 2,
-            patientId: 1,
-            questionnaireId: 2,
-            assignedBy: 1,
-            assignedAt: '2024-01-15',
-            completedAt: null,
-            completionPercentage: 45,
-            isCompleted: false,
-            questionnaire: {
-              id: 2,
-              code: 'CONNERS_ADHD',
-              name: 'Conners ADHD Rating Scale',
-              description: 'ADHD symptoms assessment',
-              type: 'SELF',
-              category: 'ADHD Assessment',
-              questionCount: 30,
-              version: 'v3',
-              createdAt: '2024-01-01',
-            },
-          },
-        ],
-        completionSummary: {
-          totalAssigned: 2,
-          completed: 1,
-          inProgress: 1,
-          pending: 0,
-        },
-      };
+    dispatch(fetchPatientDetail(patientId));
 
-      setPatient(mockPatient);
-    } catch (err: any) {
-      setError(err?.message || 'Failed to load patient');
-    } finally {
-      setIsLoading(false);
-    }
-  };
+    return () => {
+      dispatch(clearPatientDetail());
+    };
+  }, [dispatch, patientId]);
 
-  const copyToClipboard = async (text: string, assignmentId: number) => {
+  const patient = (data as unknown as ApiPatientDetail | null) ?? null;
+
+  const computed = useMemo(() => {
+    const groups = patient?.assignments || [];
+    const stats = patient?.stats;
+
+    const assignmentsCount = stats?.assignments_count ?? groups.length;
+    const assignmentsCompleted = stats?.assignments_completed ?? 0;
+
+    const selfLinks = stats?.by_type?.all_self ?? 0;
+    const otherLinks = stats?.by_type?.single_other ?? 0;
+
+    return {
+      assignmentsCount,
+      assignmentsCompleted,
+      selfLinks,
+      otherLinks,
+      groups,
+    };
+  }, [patient]);
+
+  const copyToClipboard = async (text: string, rowId: number) => {
     try {
       await navigator.clipboard.writeText(text);
-      setCopiedLink(assignmentId);
+      setCopiedLink(rowId);
       setTimeout(() => setCopiedLink(null), 2000);
     } catch {
-      console.error('Failed to copy');
+      // ignore
     }
   };
 
-  const getStatusBadge = (assignment: QuestionnaireAssignment) => {
-    if (assignment.isCompleted) {
+  const getStatusBadge = (completed: boolean) => {
+    if (completed) {
       return (
         <div className="flex items-center gap-1 bg-green-100 text-green-700 px-2 py-1 rounded text-sm">
           <CheckCircle size={16} />
@@ -127,17 +140,10 @@ export default function PatientDetailPage() {
         </div>
       );
     }
-    if (assignment.completionPercentage > 0) {
-      return (
-        <div className="flex items-center gap-1 bg-blue-100 text-blue-700 px-2 py-1 rounded text-sm">
-          <Clock size={16} /> In Progress
-        </div>
-      );
-    }
     return (
-      <div className="flex items-center gap-1 bg-gray-100 text-gray-700 px-2 py-1 rounded text-sm">
-        <AlertCircle size={16} />
-        Pending
+      <div className="flex items-center gap-1 bg-blue-100 text-blue-700 px-2 py-1 rounded text-sm">
+        <Clock size={16} />
+        In Progress
       </div>
     );
   };
@@ -182,14 +188,12 @@ export default function PatientDetailPage() {
               </Button>
             </Link>
           </div>
+
           <h1 className="text-3xl font-bold text-gray-900">
-            {patient.name} {patient.surname}
+            {patient.name || '–'} {patient.surname || ''}
           </h1>
           <p className="text-gray-600 mt-1">Patient ID: {patient.id}</p>
         </div>
-        {/* <Link href={`/admin/dashboard/patients/${patient.id}/edit`}>
-          <Button>Edit Patient</Button>
-        </Link> */}
       </div>
 
       {/* Patient Information */}
@@ -201,26 +205,27 @@ export default function PatientDetailPage() {
           <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
             <div>
               <p className="text-sm text-gray-600">Sex</p>
-              <p className="text-lg font-semibold text-gray-900">{patient.sex || '–'}</p>
+              <p className="text-lg font-semibold text-gray-900">{sexUi(patient.sex)}</p>
             </div>
+
             <div>
               <p className="text-sm text-gray-600">Date of Birth</p>
               <p className="text-lg font-semibold text-gray-900">
-                {patient.dateOfBirth
-                  ? new Date(patient.dateOfBirth).toLocaleDateString('it-IT')
-                  : '–'}
+                {patient.birth ? new Date(patient.birth).toLocaleDateString('it-IT') : '–'}
               </p>
             </div>
+
             <div>
               <p className="text-sm text-gray-600">Years of Education</p>
               <p className="text-lg font-semibold text-gray-900">
-                {patient.yearsOfEducation ? `${patient.yearsOfEducation} years` : '–'}
+                {patient.education != null ? `${patient.education} years` : '–'}
               </p>
             </div>
+
             <div>
               <p className="text-sm text-gray-600">Registered</p>
               <p className="text-lg font-semibold text-gray-900">
-                {new Date(patient.createdAt).toLocaleDateString('it-IT')}
+                {patient.created_at ? new Date(patient.created_at).toLocaleDateString('it-IT') : '–'}
               </p>
             </div>
           </div>
@@ -228,107 +233,129 @@ export default function PatientDetailPage() {
       </Card>
 
       {/* Completion Summary */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
         <Card>
           <CardContent className="pt-6">
             <div className="text-center">
-              <p className="text-3xl font-bold text-gray-900">
-                {patient.completionSummary.totalAssigned}
-              </p>
-              <p className="text-sm text-gray-600 mt-1">Total Assigned</p>
+              <p className="text-3xl font-bold text-gray-900">{computed.assignmentsCount}</p>
+              <p className="text-sm text-gray-600 mt-1">Assignments</p>
             </div>
           </CardContent>
         </Card>
+
         <Card>
           <CardContent className="pt-6">
             <div className="text-center">
-              <p className="text-3xl font-bold text-green-600">
-                {patient.completionSummary.completed}
-              </p>
-              <p className="text-sm text-gray-600 mt-1">Completed</p>
+              <p className="text-3xl font-bold text-green-600">{computed.assignmentsCompleted}</p>
+              <p className="text-sm text-gray-600 mt-1">Assignments Completed</p>
             </div>
           </CardContent>
         </Card>
+
         <Card>
           <CardContent className="pt-6">
             <div className="text-center">
-              <p className="text-3xl font-bold text-blue-600">
-                {patient.completionSummary.inProgress}
-              </p>
-              <p className="text-sm text-gray-600 mt-1">In Progress</p>
+              <p className="text-3xl font-bold text-purple-400">{computed.selfLinks}</p>
+              <p className="text-sm text-gray-600 mt-1">Self Links</p>
             </div>
           </CardContent>
         </Card>
+
         <Card>
           <CardContent className="pt-6">
             <div className="text-center">
-              <p className="text-3xl font-bold text-amber-600">
-                {patient.completionSummary.pending}
-              </p>
-              <p className="text-sm text-gray-600 mt-1">Pending</p>
+              <p className="text-3xl font-bold text-amber-600">{computed.otherLinks}</p>
+              <p className="text-sm text-gray-600 mt-1">Other Links</p>
             </div>
           </CardContent>
         </Card>
       </div>
 
-      {/* Assigned Questionnaires */}
+      {/* Assigned Questionnaires (assignment-wise) */}
       <Card>
         <CardHeader>
           <CardTitle>Assigned Questionnaires</CardTitle>
-          <CardDescription>
-            List of questionnaires assigned to this patient
-          </CardDescription>
+          <CardDescription>Assignments grouped by each assign action</CardDescription>
         </CardHeader>
+
         <CardContent>
-          {patient.assignments.length === 0 ? (
-            <div className="text-center py-8 text-gray-600">
-              No questionnaires assigned yet
-            </div>
+          {computed.groups.length === 0 ? (
+            <div className="text-center py-8 text-gray-600">No questionnaires assigned yet</div>
           ) : (
             <div className="overflow-x-auto">
-              <Table>
+              <Table className="table-fixed">
                 <TableHeader>
                   <TableRow className="bg-gray-50">
-                    <TableHead className="font-semibold">Questionnaire</TableHead>
-                    <TableHead className="font-semibold">Type</TableHead>
+                    <TableHead className="font-semibold">Assignment</TableHead>
                     <TableHead className="font-semibold">Status</TableHead>
                     <TableHead className="font-semibold">Assigned</TableHead>
                     <TableHead className="font-semibold">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
+
                 <TableBody>
-                  {patient.assignments.map((assignment) => (
-                    <TableRow key={assignment.id} className="hover:bg-gray-50">
-                      <TableCell className="font-medium">
-                        {assignment.questionnaire.name}
-                      </TableCell>
-                      <TableCell>
-                        <span className="px-2 py-1 bg-blue-100 text-blue-700 text-sm rounded">
-                          {assignment.questionnaire.type}
-                        </span>
-                      </TableCell>
-                      <TableCell>{getStatusBadge(assignment)}</TableCell>
-                      <TableCell className="text-sm text-gray-600">
-                        {new Date(assignment.assignedAt).toLocaleDateString('it-IT')}
-                      </TableCell>
-                      <TableCell>
-                                                    <Button
+                  {computed.groups.map((g) => {
+                    const totalLinks = g.links?.length || 0;
+                    const submittedLinks = g.links?.filter((x) => x.is_submitted).length || 0;
+                    const groupCompleted = totalLinks > 0 && submittedLinks === totalLinks;
+
+                    const label = `Assignment #${g.assignment_id} — ${totalLinks} link(s) (${submittedLinks} completed)`;
+
+                    return (
+ <TableRow
+  key={g.assignment_id}
+  className="hover:bg-gray-50 cursor-pointer"
+  onClick={() => {
+    const selfLink = g.links?.find((l) => l.link_type === 'all_self');
+    const firstLink = g.links?.[0];
+
+    const targetLinkId = selfLink?.link_id ?? firstLink?.link_id;
+
+    if (!targetLinkId) return;
+
+    router.push(`/admin/dashboard/patients/${patient.id}/assignments/${targetLinkId}`);
+  }}
+>
+
+                        <TableCell className="font-medium">{label}</TableCell>
+
+                        <TableCell>{getStatusBadge(groupCompleted)}</TableCell>
+
+                        <TableCell className="text-sm text-gray-600">
+                          {g.created_at ? new Date(g.created_at).toLocaleDateString('it-IT') : '–'}
+                        </TableCell>
+
+                        <TableCell onClick={(e) => e.stopPropagation()}>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="gap-1"
+                            onClick={() => console.log('EXPORT WORD for assignment_id:', g.assignment_id)}
+                          >
+                            <FileText size={16} />
+                            Word
+                          </Button>
+
+                          {/* copy first available link in group (optional) */}
+                          {g.links?.[0]?.url ? (
+                            <Button
                               variant="ghost"
                               size="sm"
                               className="gap-1"
-                              // onClick={() => handleExportWord(result.id)}
+                              onClick={() => copyToClipboard(g.links[0].url!, g.assignment_id)}
                             >
-                              <FileText size={16} />
-                              Word
+                              {copiedLink === g.assignment_id ? 'Copied!' : 'Copy'}
                             </Button>
-                      </TableCell>
-                    </TableRow>
-                  ))}
+                          ) : null}
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
                 </TableBody>
               </Table>
             </div>
           )}
-          
+
           <div className="mt-6">
             <Link href={`/admin/dashboard/questionnaires?patient_id=${patient.id}`}>
               <Button>Assign Questionnaires</Button>

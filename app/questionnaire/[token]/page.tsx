@@ -42,6 +42,7 @@ type RegistryOption =
     };
 
 type RegistryQuestion = {
+  key?: string; // defs use q1..
   text: string;
   type: string;
   required?: boolean;
@@ -51,8 +52,7 @@ type RegistryQuestion = {
 const API_BASE = (process.env.NEXT_PUBLIC_API_BASE_URL || "").replace(/\/$/, "");
 
 const getModuleByFormCode = (formCode: string) => {
-  const modules = Object.values(QUESTIONNAIRE_REGISTRY) as any[];
-  return modules.find((m) => m?.def?.formCode === formCode);
+  return (QUESTIONNAIRE_REGISTRY as any)?.[formCode] ?? null;
 };
 
 function normalizeQuestionType(t: unknown): UiQuestionType {
@@ -62,30 +62,32 @@ function normalizeQuestionType(t: unknown): UiQuestionType {
   return "text";
 }
 
-/**
- * ✅ IMPORTANT FIX for "single select selects all":
- * Radio values must be UNIQUE & non-empty.
- * We generate optionValue using (rawVal + index).
- */
+function stripUiSuffix(v: unknown) {
+  if (typeof v !== "string") return v;
+  return v.split("__")[0];
+}
+
 function buildQuestionnaireDetailsFromCodes(codes: string[]): QuestionnaireDetail[] {
   const list: QuestionnaireDetail[] = [];
 
-  for (const code of codes) {
-    const mod: any = getModuleByFormCode(code);
-    if (!mod) continue;
+  for (const formCode of codes) {
+    const mod: any = getModuleByFormCode(formCode);
+    if (!mod?.def) continue;
 
     const questionsFromRegistry = (mod.def.questions || []) as RegistryQuestion[];
 
-    const uiQuestions: UiQuestion[] = questionsFromRegistry.map((q: RegistryQuestion, idx: number) => {
+    const uiQuestions: UiQuestion[] = questionsFromRegistry.map((q, idx) => {
       const qType = normalizeQuestionType(q.type);
 
       const options: UiOption[] =
         qType === "text"
           ? []
-          : ((q.options || []) as RegistryOption[]).map((opt: RegistryOption, oidx: number) => {
+          : ((q.options || []) as RegistryOption[]).map((opt, oidx) => {
               const optionText = String((opt as any)?.label ?? opt);
               const rawVal = (opt as any)?.value ?? (opt as any)?.id ?? optionText ?? oidx;
-              const optionValue = `${String(rawVal)}__${oidx}`; // ✅ unique always
+
+              // ✅ unique per option (fix radio selecting all)
+              const optionValue = `${String(rawVal)}__${oidx}`;
 
               return {
                 id: oidx + 1,
@@ -100,6 +102,7 @@ function buildQuestionnaireDetailsFromCodes(codes: string[]): QuestionnaireDetai
         questionType: qType,
         isMandatory: !!q.required,
         options,
+        ...( { questionKey: q.key ?? `q${idx + 1}` } as any ),
       } as UiQuestion;
     });
 
@@ -108,6 +111,7 @@ function buildQuestionnaireDetailsFromCodes(codes: string[]): QuestionnaireDetai
       name: mod.def.name,
       description: mod.def.instruction,
       questions: uiQuestions,
+      ...( { formCode: mod.def.formCode } as any ),
     } as QuestionnaireDetail);
   }
 
@@ -156,9 +160,13 @@ export default function QuestionnairePage() {
   const [unansweredQuestions, setUnansweredQuestions] = useState<number[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  // ✅ NEW: link type + submitted by selection (ONLY for OTHER)
+  const [linkType, setLinkType] = useState<"all_self" | "single_other" | "">("");
+  const [submittedBy, setSubmittedBy] = useState<string>(""); // Madre/Padre/.../Altro
+  const [submittedByOther, setSubmittedByOther] = useState<string>(""); // if Altro
+
   // ✅ LOAD by token
   useEffect(() => {
-    console.log("✅ QuestionnairePage MOUNTED", { token, API_BASE });
     const load = async () => {
       try {
         setIsLoading(true);
@@ -169,18 +177,23 @@ export default function QuestionnairePage() {
         if (!API_BASE) throw new Error("Missing NEXT_PUBLIC_API_BASE_URL");
 
         const url = `${API_BASE}/questionnaire/links/${token}/`;
-        console.log("GET link:", url);
-
         const res = await fetch(url, { method: "GET", cache: "no-store" });
         const data = await safeJson(res);
-
-        console.log("LINK STATUS:", res.status);
-        console.log("LINK BODY:", data);
 
         if (!res.ok) throw new Error(`[${res.status}] ${extractErrorMessage(data)}`);
 
         const payload = extractPayload(data);
-        const codes: string[] = payload?.questionnaires || payload?.codes || payload?.assigned_questionnaires || [];
+
+        // ✅ detect link_type (support different payload shapes)
+        const lt =
+          payload?.link_type ||
+          payload?.link?.link_type ||
+          payload?.data?.link_type ||
+          "";
+        setLinkType(lt);
+
+        const codes: string[] =
+          payload?.questionnaires || payload?.codes || payload?.assigned_questionnaires || [];
 
         if (payload?.is_submitted) throw new Error("Already submitted");
         if (!Array.isArray(codes) || codes.length === 0) throw new Error("No questionnaires assigned for this link.");
@@ -269,84 +282,113 @@ export default function QuestionnairePage() {
     }
   };
 
+  const canSubmitOther = useMemo(() => {
+    if (linkType !== "single_other") return true;
+    if (!submittedBy) return false;
+    if (submittedBy === "Altro" && !submittedByOther.trim()) return false;
+    return true;
+  }, [linkType, submittedBy, submittedByOther]);
+
   /**
-   * ✅ SUBMIT: show logs + show real backend error in UI
-   * For now sending raw responses.
-   * Later replace with computed_results only.
+   * ✅ SUBMIT (computed only)
    */
-const handleSubmit = async () => {
-  console.log("🔥 SUBMIT CLICKED");
-  console.log("token:", token);
-  console.log("API_BASE:", API_BASE);
+  const handleSubmit = async () => {
+    if (!validateCurrentQuestionnaire()) return;
 
-  if (!token) {
-    console.error("❌ Missing token param");
-    setError("Missing token");
-    return;
-  }
-  if (!API_BASE) {
-    console.error("❌ Missing NEXT_PUBLIC_API_BASE_URL");
-    setError("Missing NEXT_PUBLIC_API_BASE_URL");
-    return;
-  }
+    // ✅ enforce "Submitted by" for OTHER links
+    if (linkType === "single_other") {
+      if (!submittedBy) {
+        setError("Please select who is submitting this questionnaire (Submitted by).");
+        return;
+      }
+      if (submittedBy === "Altro" && !submittedByOther.trim()) {
+        setError('Please specify "Altro" (relationship) before submitting.');
+        return;
+      }
+    }
 
-  try {
-    setIsSubmitting(true);
-    setError("");
-
-    const url = `${API_BASE}/questionnaire/submit/${token}/`;
-    console.log("➡️ POST URL:", url);
-
-    // ✅ BACKEND expects "results" (your 400 says: results required)
-    const payload = {
-      results: state.responses,
-    };
-
-    console.log("➡️ payload:", payload);
-
-    const res = await fetch(url, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(payload),
-    });
-
-    const text = await res.text();
-    console.log("✅ SUBMIT STATUS:", res.status);
-    console.log("✅ SUBMIT BODY:", text);
-
-    let data: any = null;
     try {
-      data = text ? JSON.parse(text) : null;
-    } catch {
-      data = { raw: text };
+      setIsSubmitting(true);
+      setError("");
+
+      if (!token) throw new Error("Missing token");
+      if (!API_BASE) throw new Error("Missing NEXT_PUBLIC_API_BASE_URL");
+
+      const computedResults: Record<string, Record<string, any>> = {};
+
+      for (const qn of questionnaires) {
+        const formCode = (qn as any).formCode as string | undefined;
+        if (!formCode) throw new Error("Missing formCode in questionnaire list");
+
+        const mod: any = (QUESTIONNAIRE_REGISTRY as any)?.[formCode];
+        if (!mod?.compute) throw new Error(`Compute not found for formCode="${formCode}"`);
+
+        const uiResponsesForThis = state.responses[qn.id] || {};
+
+        const answersForCompute: Record<string, any> = {};
+        for (const q of qn.questions) {
+          const key = (q as any).questionKey as string; // "q1"
+          const raw = (uiResponsesForThis as any)?.[q.id];
+
+          const strip = (v: any) => (typeof v === "string" ? v.split("__")[0] : v);
+
+          if (Array.isArray(raw)) answersForCompute[key] = raw.map(strip);
+          else answersForCompute[key] = strip(raw);
+        }
+
+        const out = mod.compute(answersForCompute);
+        computedResults[formCode] = out;
+      }
+
+      // ✅ set report_by based on OTHER selection
+      const reportByValue: string | null =
+        linkType === "single_other"
+          ? submittedBy === "Altro"
+            ? submittedByOther.trim()
+            : submittedBy
+          : null;
+
+      const payload = {
+        results: computedResults,
+        report_by: reportByValue,
+      };
+
+      const url = `${API_BASE}/questionnaire/submit/${token}/`;
+
+      const res = await fetch(url, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+
+      const text = await res.text();
+      let data: any = null;
+      try {
+        data = text ? JSON.parse(text) : null;
+      } catch {
+        data = { raw: text };
+      }
+
+      if (!res.ok || data?.success === false) {
+        const msg =
+          data?.message ||
+          data?.detail ||
+          (data?.error ? JSON.stringify(data.error, null, 2) : null) ||
+          text ||
+          "Submit failed";
+        setError(`Submit failed: ${res.status}\n${msg}`);
+        return;
+      }
+
+      localStorage.removeItem(`questionnaire_${token}`);
+      alert("✅ Submitted successfully!");
+      router.push("/questionnaire/success");
+    } catch (err: any) {
+      setError(err?.message || "Submit request failed");
+    } finally {
+      setIsSubmitting(false);
     }
-
-    if (!res.ok || data?.success === false) {
-      const msg =
-        data?.message ||
-        data?.detail ||
-        (data?.error ? JSON.stringify(data.error, null, 2) : null) ||
-        text ||
-        "Submit failed";
-
-      setError(`Submit failed: ${res.status}\n${msg}`);
-      return;
-    }
-
-    // ✅ success
-    localStorage.removeItem(`questionnaire_${token}`);
-    alert("✅ Submit OK");
-    router.push("/questionnaire/success");
-  } catch (err: any) {
-    console.error("❌ FETCH ERROR:", err);
-    setError(err?.message || "Submit request failed");
-  } finally {
-    setIsSubmitting(false);
-  }
-};
-
+  };
 
   if (isLoading) {
     return (
@@ -410,6 +452,55 @@ const handleSubmit = async () => {
           </Alert>
         )}
 
+        {/* ✅ NEW: Submitted by block for OTHER type */}
+        {linkType === "single_other" && (
+          <Card className="border-0 shadow-lg mb-6">
+            <CardHeader>
+              <CardTitle className="text-lg">Chi sta compilando questo questionario?</CardTitle>
+              <CardDescription>
+                Seleziona chi sta rispondendo per conto del paziente. (Required)
+              </CardDescription>
+            </CardHeader>
+
+            <CardContent className="space-y-4">
+              <RadioGroup value={submittedBy} onValueChange={setSubmittedBy}>
+                <div className="grid grid-cols-2 gap-3">
+                  {["Madre", "Padre", "Fratello/Sorella", "Coniuge/Partner", "Amico/a", "Altro"].map((opt) => (
+                    <div key={opt} className="flex items-center gap-3 rounded border p-3">
+                      <RadioGroupItem value={opt} id={`submittedby-${opt}`} />
+                      <Label htmlFor={`submittedby-${opt}`} className="cursor-pointer font-medium">
+                        {opt}
+                      </Label>
+                    </div>
+                  ))}
+                </div>
+              </RadioGroup>
+
+              {submittedBy === "Altro" && (
+                <div className="space-y-2">
+                  <Label className="font-semibold">
+                    Specificare (Required) <span className="text-red-600">*</span>
+                  </Label>
+                  <Input
+                    placeholder="Es: Zio, Cugino, Caregiver..."
+                    value={submittedByOther}
+                    onChange={(e) => setSubmittedByOther(e.target.value)}
+                  />
+                  {!submittedByOther.trim() && (
+                    <p className="text-sm text-red-600">Questo campo è obbligatorio.</p>
+                  )}
+                </div>
+              )}
+
+              {!submittedBy && (
+                <p className="text-sm text-red-600">
+                  Seleziona chi sta compilando (required).
+                </p>
+              )}
+            </CardContent>
+          </Card>
+        )}
+
         <Card className="border-0 shadow-lg mb-6">
           <CardHeader>
             <CardTitle>{currentQuestionnaire.name}</CardTitle>
@@ -438,10 +529,7 @@ const handleSubmit = async () => {
                     <div className="space-y-2">
                       {question.options.map((option: UiOption) => (
                         <div key={option.id} className="flex items-center gap-3">
-                          <RadioGroupItem
-                            value={String(option.optionValue)} // ✅ unique
-                            id={`option-${question.id}-${option.id}`}
-                          />
+                          <RadioGroupItem value={String(option.optionValue)} id={`option-${question.id}-${option.id}`} />
                           <Label htmlFor={`option-${question.id}-${option.id}`} className="font-normal cursor-pointer">
                             {option.optionText}
                           </Label>
@@ -511,21 +599,14 @@ const handleSubmit = async () => {
           </Button>
 
           {isLastQuestionnaire ? (
-<Button
-  type="button"
-  onClick={async () => {
-    console.log("🔥 SUBMIT CLICKED");
-    try {
-      await handleSubmit(); // ✅ MUST be awaited so errors show
-    } catch (e) {
-      console.error("❌ handleSubmit threw:", e);
-    }
-  }}
-  className="flex-1 gap-2"
->
-  Submit
-</Button>
-
+            <Button
+              type="button"
+              onClick={handleSubmit}
+              disabled={isSubmitting || isSaving || !canSubmitOther}
+              className="flex-1 gap-2"
+            >
+              {isSubmitting ? "Submitting..." : "Submit"}
+            </Button>
           ) : (
             <Button onClick={handleNext} disabled={unansweredQuestions.length > 0} className="flex-1 gap-2">
               Next

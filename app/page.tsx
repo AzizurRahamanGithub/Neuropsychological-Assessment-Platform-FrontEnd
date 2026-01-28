@@ -30,7 +30,7 @@ type LoginResponse = {
   };
 };
 
-const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://10.0.30.73:8000';
+const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://10.0.30.73:8000/api/v1';
 
 const formatError = (data: any) => {
   if (!data) return 'Login failed';
@@ -67,7 +67,7 @@ export default function AdminLogin() {
 
     try {
       // ✅ REAL BACKEND LOGIN (expects: { identifier, password })
-      const res = await fetch(`${API_BASE}/api/v1/auth/login/`, {
+      const res = await fetch(`${API_BASE}/auth/login/`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
