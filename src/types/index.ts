@@ -27,6 +27,7 @@ export interface Patient {
   dateOfBirth?: string;
   yearsOfEducation?: number;
   clinicianId: number;
+  handedness: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -40,6 +41,46 @@ export interface PatientDetail extends Patient {
     pending: number;
   };
 }
+
+export type LinkType = 'all_self' | 'single_other';
+
+export type Submission = {
+  link_id: number;
+  assignment_id: number;
+  link_type: LinkType;
+  token: string;
+  url: string;
+  questionnaires: string[];
+  report_by: string | null;
+  is_submitted: boolean;
+  submitted_at: string | null;
+  created_at: string;
+  results: Record<string, Record<string, any>>;
+};
+
+export type PatientStats = {
+  assignments_count: number;
+  assignments_completed: number;
+  by_type: {
+    all_self: number;
+    single_other: number;
+  };
+};
+
+export type PatientDetailApi = {
+  id: number;
+  name: string | null;
+  surname: string | null;
+  sex: string | null;
+  birth: string | null;
+  education: number | null;
+  handedness: string | null;
+  updated_at: string;
+  created_at: string;
+  stats: PatientStats;
+  submissions: Submission[];
+};
+
 
 // Questionnaire types
 export type QuestionnaireType = 'SELF' | 'OTHER';
