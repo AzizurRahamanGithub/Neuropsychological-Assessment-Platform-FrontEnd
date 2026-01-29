@@ -49,6 +49,7 @@ type PatientsState = {
   isLoading: boolean;
   error: string | null;
   selectedPatientId: string; // dropdown এর জন্য string
+  selectedPatientBirth: string | null; // ✅ DOB store
 };
 
 const initialState: PatientsState = {
@@ -56,7 +57,9 @@ const initialState: PatientsState = {
   isLoading: false,
   error: null,
   selectedPatientId: '',
+  selectedPatientBirth: null,
 };
+
 
 // ✅ thunk: patients load
 export const fetchPatients = createAsyncThunk<

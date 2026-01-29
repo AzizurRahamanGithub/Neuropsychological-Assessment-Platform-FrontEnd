@@ -36,10 +36,10 @@ type RegistryOption =
   | string
   | number
   | {
-      label?: string;
-      value?: string | number;
-      id?: string | number;
-    };
+    label?: string;
+    value?: string | number;
+    id?: string | number;
+  };
 
 type RegistryQuestion = {
   key?: string; // defs use q1..
@@ -83,18 +83,18 @@ function buildQuestionnaireDetailsFromCodes(codes: string[]): QuestionnaireDetai
         qType === "text"
           ? []
           : ((q.options || []) as RegistryOption[]).map((opt, oidx) => {
-              const optionText = String((opt as any)?.label ?? opt);
-              const rawVal = (opt as any)?.value ?? (opt as any)?.id ?? optionText ?? oidx;
+            const optionText = String((opt as any)?.label ?? opt);
+            const rawVal = (opt as any)?.value ?? (opt as any)?.id ?? optionText ?? oidx;
 
-              // ✅ unique per option (fix radio selecting all)
-              const optionValue = `${String(rawVal)}__${oidx}`;
+            // ✅ unique per option (fix radio selecting all)
+            const optionValue = `${String(rawVal)}__${oidx}`;
 
-              return {
-                id: oidx + 1,
-                optionText,
-                optionValue,
-              } as UiOption;
-            });
+            return {
+              id: oidx + 1,
+              optionText,
+              optionValue,
+            } as UiOption;
+          });
 
       return {
         id: idx + 1,
@@ -102,7 +102,7 @@ function buildQuestionnaireDetailsFromCodes(codes: string[]): QuestionnaireDetai
         questionType: qType,
         isMandatory: !!q.required,
         options,
-        ...( { questionKey: q.key ?? `q${idx + 1}` } as any ),
+        ...({ questionKey: q.key ?? `q${idx + 1}` } as any),
       } as UiQuestion;
     });
 
@@ -111,7 +111,7 @@ function buildQuestionnaireDetailsFromCodes(codes: string[]): QuestionnaireDetai
       name: mod.def.name,
       description: mod.def.instruction,
       questions: uiQuestions,
-      ...( { formCode: mod.def.formCode } as any ),
+      ...({ formCode: mod.def.formCode } as any),
     } as QuestionnaireDetail);
   }
 
@@ -149,6 +149,8 @@ export default function QuestionnairePage() {
   const token = typeof params?.token === "string" ? params.token : "";
 
   const [questionnaires, setQuestionnaires] = useState<QuestionnaireDetail[]>([]);
+  const [patientAge, setPatientAge] = useState<number | null>(null);
+
   const [state, setState] = useState<QuestionnaireState>({
     currentQuestionnaireIndex: 0,
     responses: {},
@@ -184,6 +186,18 @@ export default function QuestionnairePage() {
 
         const payload = extractPayload(data);
 
+        const pa =
+          payload?.patient_age ??
+          payload?.patientAge ??
+          payload?.patient?.patient_age ??
+          payload?.patient?.age ??
+          payload?.assignment?.patient_age ??
+          payload?.data?.patient_age ??
+          null;
+
+        const paNum = typeof pa === "number" ? pa : pa ? Number(pa) : null;
+        setPatientAge(Number.isFinite(paNum as any) ? (paNum as number) : null);
+
         // ✅ detect link_type (support different payload shapes)
         const lt =
           payload?.link_type ||
@@ -208,7 +222,7 @@ export default function QuestionnairePage() {
           try {
             const parsed = JSON.parse(savedState);
             setState(parsed);
-          } catch {}
+          } catch { }
         }
       } catch (e: any) {
         setError(e?.message || "Failed to load questionnaire");
@@ -336,7 +350,12 @@ export default function QuestionnairePage() {
           else answersForCompute[key] = strip(raw);
         }
 
-        const out = mod.compute(answersForCompute);
+        console.log("✅ patientAge state:", patientAge, "type:", typeof patientAge);
+        console.log("✅ answersForCompute:", answersForCompute);
+
+
+        const out = mod.compute(answersForCompute, { patientAge: patientAge ?? undefined });
+
         computedResults[formCode] = out;
       }
 
@@ -354,6 +373,13 @@ export default function QuestionnairePage() {
       };
 
       const url = `${API_BASE}/questionnaire/submit/${token}/`;
+
+      // ✅ FRONTEND -> BACKEND কী যাচ্ছে (DevTools Console এ দেখাবে)
+      console.log("✅ SUBMIT URL:", url);
+      console.log("✅ SUBMIT token:", token);
+      console.log("✅ SUBMIT payload object:", payload);
+      console.log("✅ SUBMIT payload JSON:\n", JSON.stringify(payload, null, 2));
+
 
       const res = await fetch(url, {
         method: "POST",
@@ -511,9 +537,8 @@ export default function QuestionnairePage() {
             {currentQuestionnaire.questions.map((question: UiQuestion, index: number) => (
               <div
                 key={question.id}
-                className={`pb-6 border-b last:border-b-0 ${
-                  unansweredQuestions.includes(question.id) ? "bg-red-50 p-4 rounded" : ""
-                }`}
+                className={`pb-6 border-b last:border-b-0 ${unansweredQuestions.includes(question.id) ? "bg-red-50 p-4 rounded" : ""
+                  }`}
               >
                 <Label className="block text-base font-semibold text-gray-900 mb-3">
                   {index + 1}. {question.questionText}

@@ -9,10 +9,13 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 
-import { FileText, ArrowLeft, CheckCircle, Clock, AlertCircle } from 'lucide-react';
+import { FileText, ArrowLeft, CheckCircle, Clock, AlertCircle, Download } from 'lucide-react';
 
 import { useAppDispatch, useAppSelector } from '@/src/store/hooks';
 import { fetchPatientDetail, clearPatientDetail } from '@/src/store/slices/patientDetailSlice';
+
+// ✅ Import export function
+import { exportAssignmentToDocx } from '@/src/lib/export-docx';
 
 /** -------- Types (match backend grouped response) -------- */
 type LinkType = 'all_self' | 'single_other';
@@ -56,16 +59,13 @@ type ApiPatientDetail = {
   id: number;
   name: string | null;
   surname: string | null;
-  sex: string | null; // "male" | "female" | "other"
+  sex: string | null;
   birth: string | null;
   education: number | null;
-  handedness: string | null; // "left" | "right"
+  handedness: string | null;
   created_at: string;
   updated_at: string;
-
   stats?: ApiPatientStats;
-
-  // ✅ NEW: grouped assignments
   assignments?: ApiAssignmentGroup[];
 };
 
@@ -76,6 +76,24 @@ const sexUi = (s?: string | null) => {
   return v ? 'O' : '–';
 };
 
+const handednessUi = (h?: string | null) => {
+  const s = String(h || '').toLowerCase();
+  if (s === 'left' || s === 'sx') return 'sx';
+  if (s === 'right' || s === 'dx') return 'dx';
+  return '—';
+};
+
+const calcAge = (birthIso?: string | null) => {
+  if (!birthIso) return '—';
+  const d = new Date(birthIso);
+  if (isNaN(d.getTime())) return '—';
+  const today = new Date();
+  let age = today.getFullYear() - d.getFullYear();
+  const m = today.getMonth() - d.getMonth();
+  if (m < 0 || (m === 0 && today.getDate() < d.getDate())) age--;
+  return String(age);
+};
+
 export default function PatientDetailPage() {
   const params = useParams();
   const router = useRouter();
@@ -84,11 +102,10 @@ export default function PatientDetailPage() {
   const patientIdStr = params.id as string;
   const patientId = Number(patientIdStr);
 
-  // ✅ from redux
   const { data, isLoading, error } = useAppSelector((s) => s.patientDetail);
 
-  // local UI-only
   const [copiedLink, setCopiedLink] = useState<number | null>(null);
+  const [exportingAssignment, setExportingAssignment] = useState<number | null>(null);
 
   useEffect(() => {
     if (!patientId || Number.isNaN(patientId)) return;
@@ -128,6 +145,45 @@ export default function PatientDetailPage() {
       setTimeout(() => setCopiedLink(null), 2000);
     } catch {
       // ignore
+    }
+  };
+
+  // ✅ Handle Word export
+  const handleExportWord = async (assignment: ApiAssignmentGroup) => {
+    if (!patient) return;
+
+    // Check if completed
+    const totalLinks = assignment.links?.length || 0;
+    const submittedLinks = assignment.links?.filter((x) => x.is_submitted).length || 0;
+    const isCompleted = totalLinks > 0 && submittedLinks === totalLinks;
+
+    if (!isCompleted) {
+      alert('Assignment is not completed yet. Please complete all links before exporting.');
+      return;
+    }
+
+    try {
+      setExportingAssignment(assignment.assignment_id);
+
+      const patientInfo = {
+        name: patient.name || '',
+        surname: patient.surname || '',
+        education: patient.education,
+        age: calcAge(patient.birth),
+        sex: sexUi(patient.sex),
+        handedness: handednessUi(patient.handedness),
+      };
+
+      await exportAssignmentToDocx(patientInfo, assignment);
+
+      // Success feedback
+      setTimeout(() => {
+        setExportingAssignment(null);
+      }, 1000);
+    } catch (err) {
+      console.error('Export error:', err);
+      alert('Failed to export document. Please try again.');
+      setExportingAssignment(null);
     }
   };
 
@@ -271,7 +327,7 @@ export default function PatientDetailPage() {
         </Card>
       </div>
 
-      {/* Assigned Questionnaires (assignment-wise) */}
+      {/* Assigned Questionnaires */}
       <Card>
         <CardHeader>
           <CardTitle>Assigned Questionnaires</CardTitle>
@@ -301,22 +357,23 @@ export default function PatientDetailPage() {
 
                     const label = `Assignment #${g.assignment_id} — ${totalLinks} link(s) (${submittedLinks} completed)`;
 
+                    const isExporting = exportingAssignment === g.assignment_id;
+
                     return (
- <TableRow
-  key={g.assignment_id}
-  className="hover:bg-gray-50 cursor-pointer"
-  onClick={() => {
-    const selfLink = g.links?.find((l) => l.link_type === 'all_self');
-    const firstLink = g.links?.[0];
+                      <TableRow
+                        key={g.assignment_id}
+                        className="hover:bg-gray-50 cursor-pointer"
+                        onClick={() => {
+                          const selfLink = g.links?.find((l) => l.link_type === 'all_self');
+                          const firstLink = g.links?.[0];
 
-    const targetLinkId = selfLink?.link_id ?? firstLink?.link_id;
+                          const targetLinkId = selfLink?.link_id ?? firstLink?.link_id;
 
-    if (!targetLinkId) return;
+                          if (!targetLinkId) return;
 
-    router.push(`/admin/dashboard/patients/${patient.id}/assignments/${targetLinkId}`);
-  }}
->
-
+                          router.push(`/admin/dashboard/patients/${patient.id}/assignments/${targetLinkId}`);
+                        }}
+                      >
                         <TableCell className="font-medium">{label}</TableCell>
 
                         <TableCell>{getStatusBadge(groupCompleted)}</TableCell>
@@ -330,23 +387,21 @@ export default function PatientDetailPage() {
                             variant="ghost"
                             size="sm"
                             className="gap-1"
-                            onClick={() => console.log('EXPORT WORD for assignment_id:', g.assignment_id)}
+                            onClick={() => handleExportWord(g)}
+                            disabled={isExporting || !groupCompleted}
                           >
-                            <FileText size={16} />
-                            Word
+                            {isExporting ? (
+                              <>
+                                <Download size={16} className="animate-bounce" />
+                                Exporting...
+                              </>
+                            ) : (
+                              <>
+                                <FileText size={16} />
+                                Word
+                              </>
+                            )}
                           </Button>
-
-                          {/* copy first available link in group (optional) */}
-                          {g.links?.[0]?.url ? (
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              className="gap-1"
-                              onClick={() => copyToClipboard(g.links[0].url!, g.assignment_id)}
-                            >
-                              {copiedLink === g.assignment_id ? 'Copied!' : 'Copy'}
-                            </Button>
-                          ) : null}
                         </TableCell>
                       </TableRow>
                     );
