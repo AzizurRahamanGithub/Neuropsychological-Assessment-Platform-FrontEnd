@@ -1,8 +1,8 @@
-import { createAsyncThunk, createSlice } from '@reduxjs/toolkit';
+import { createAsyncThunk, createSlice } from "@reduxjs/toolkit";
 
-const API_BASE = 'http://10.0.30.73:8000/api/v1';
+const API_BASE = "http://10.0.30.175:8000/api/v1";
 
-export type LinkType = 'all_self' | 'single_other';
+export type LinkType = "all_self" | "single_other";
 
 export type PatientStats = {
   assignments_count: number;
@@ -88,36 +88,41 @@ export const fetchPatientDetail = createAsyncThunk<
   PatientDetail,
   number,
   { rejectValue: string }
->('patientDetail/fetchPatientDetail', async (patientId, { rejectWithValue }) => {
-  try {
-    const token = localStorage.getItem('accessToken');
-    if (!token) return rejectWithValue('Authentication required');
+>(
+  "patientDetail/fetchPatientDetail",
+  async (patientId, { rejectWithValue }) => {
+    try {
+      const token = localStorage.getItem("accessToken");
+      if (!token) return rejectWithValue("Authentication required");
 
-    const url = `${API_BASE}/patients/patient/${patientId}/`;
+      const url = `${API_BASE}/patients/patient/${patientId}/`;
 
-    const res = await fetch(url, {
-      method: 'GET',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${token}`,
-      },
-      cache: 'no-store',
-    });
+      const res = await fetch(url, {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        cache: "no-store",
+      });
 
-    const json: ApiResponse = await res.json().catch(() => ({} as any));
+      const json: ApiResponse = await res.json().catch(() => ({}) as any);
 
-    if (!res.ok || json?.success === false) {
-      return rejectWithValue(json?.message || 'Failed to load patient detail');
+      if (!res.ok || json?.success === false) {
+        return rejectWithValue(
+          json?.message || "Failed to load patient detail",
+        );
+      }
+
+      return json.data;
+    } catch (e: any) {
+      return rejectWithValue(e?.message || "Failed to load patient detail");
     }
-
-    return json.data;
-  } catch (e: any) {
-    return rejectWithValue(e?.message || 'Failed to load patient detail');
-  }
-});
+  },
+);
 
 const patientDetailSlice = createSlice({
-  name: 'patientDetail',
+  name: "patientDetail",
   initialState,
   reducers: {
     clearPatientDetail(state) {
@@ -140,7 +145,7 @@ const patientDetailSlice = createSlice({
       })
       .addCase(fetchPatientDetail.rejected, (state, action) => {
         state.isLoading = false;
-        state.error = action.payload || 'Failed to load patient detail';
+        state.error = action.payload || "Failed to load patient detail";
       });
   },
 });

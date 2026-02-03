@@ -45,13 +45,6 @@ const questions: Question[] = QUESTIONS_1_18.map(
       options: [...OPTIONS_1_4],
     }) satisfies Question,
 );
-questions.push({
-  key: "instruction_part2",
-  number: null,
-  text: "In che entità i comportamenti a cui ha risposto precedentemente causano problemi allo studente nei seguenti ambiti:",
-  type: "instruction",
-  required: false,
-} as unknown as Question);
 
 // Part 2 questions (19-24) - Impairment ratings
 const IMPAIRMENT_OPTIONS = [
@@ -551,14 +544,14 @@ export function computeADHDRS5DocenteOther(
   return {
     // Part 1: Symptoms
     "Disattenzione punteggio PG": String(disattenzione_punteggio),
-    "Disattenzione STAT": disattenzione.stat,
-    "Disattenzione ESITO": disattenzione.esito,
+    "Disattenzione punteggio STAT": disattenzione.stat,
+    "Disattenzione punteggio ESITO": disattenzione.esito,
 
     "Iperattività/Impulsività punteggio PG": String(
       iperattivita_impulsivita_punteggio,
     ),
-    "Iperattività/Impulsività STAT": iperattivita_impulsivita.stat,
-    "Iperattività/Impulsività ESITO": iperattivita_impulsivita.esito,
+    "Iperattività/Impulsività punteggio STAT": iperattivita_impulsivita.stat,
+    "Iperattività/Impulsività punteggio ESITO": iperattivita_impulsivita.esito,
 
     "Totale PG": String(totale_punteggio),
     "Totale STAT": totale.stat,

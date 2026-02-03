@@ -1,17 +1,23 @@
-'use client';
+"use client";
 
-import { useMemo, useState } from 'react';
-import Link from 'next/link';
-import { useParams } from 'next/navigation';
+import { useMemo, useState } from "react";
+import Link from "next/link";
+import { useParams } from "next/navigation";
 
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+} from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 
 // ✅ FIX: use your registry-based helper (make sure this file exists)
-import { getQuestionnaireByCode } from '@/lib/questionnaires/helper';
+import { getQuestionnaireByCode } from "@/lib/questionnaires/helper";
 
 // ✅ minimal safe type (because your registry def is QuestionnaireDef)
-type QuestionType = 'text' | 'single_choice' | 'multiple_choice';
+type QuestionType = "text" | "single_choice" | "multiple_choice";
 
 export default function QuestionnaireDetailsPage() {
   const params = useParams<{ code: string }>();
@@ -22,7 +28,7 @@ export default function QuestionnaireDetailsPage() {
     return getQuestionnaireByCode(code); // should return QuestionnaireDef | null
   }, [code]);
 
-  const [respondent, setRespondent] = useState<string>('');
+  const [respondent, setRespondent] = useState<string>("");
 
   if (!q) {
     return (
@@ -56,7 +62,7 @@ export default function QuestionnaireDetailsPage() {
         </CardHeader>
 
         <CardContent className="space-y-4">
-          {q.type === 'OTHER' && (
+          {q.type === "OTHER" && (
             <div className="space-y-2">
               <label className="text-sm font-medium text-gray-700">
                 Who will fill this questionnaire?
@@ -69,7 +75,7 @@ export default function QuestionnaireDetailsPage() {
               >
                 <option value="">Select respondent...</option>
                 {/* ✅ optional: hardcode for now if you don't keep respondents in def */}
-                {['mom', 'dad', 'partner', 'caregiver', 'teacher'].map((r) => (
+                {["mom", "dad", "partner", "caregiver", "teacher"].map((r) => (
                   <option key={r} value={r}>
                     {r}
                   </option>
@@ -83,7 +89,9 @@ export default function QuestionnaireDetailsPage() {
           )}
 
           <div className="space-y-4">
-            <h2 className="font-semibold text-gray-900">Questions ({q.questions.length})</h2>
+            <h2 className="font-semibold text-gray-900">
+              Questions ({q.questions.length})
+            </h2>
 
             <div className="space-y-4">
               {q.questions.map((qq, idx) => (
@@ -93,10 +101,13 @@ export default function QuestionnaireDetailsPage() {
                   </p>
 
                   {/* ✅ Render per type */}
-                  {qq.type === ('single_choice' as QuestionType) && (
+                  {qq.type === ("single_choice" as QuestionType) && (
                     <div className="mt-3 grid gap-2">
                       {(qq.options || []).map((op, i) => (
-                        <label key={`${qq.key}-${i}`} className="flex items-center gap-2 text-sm text-gray-700">
+                        <label
+                          key={`${qq.key}-${i}`}
+                          className="flex items-center gap-2 text-sm text-gray-700"
+                        >
                           <input type="radio" name={qq.key} value={op.label} />
                           {op.label}
                         </label>
@@ -104,18 +115,25 @@ export default function QuestionnaireDetailsPage() {
                     </div>
                   )}
 
-                  {qq.type === ('multiple_choice' as QuestionType) && (
+                  {qq.type === ("multiple_choice" as QuestionType) && (
                     <div className="mt-3 grid gap-2">
                       {(qq.options || []).map((op, i) => (
-                        <label key={`${qq.key}-${i}`} className="flex items-center gap-2 text-sm text-gray-700">
-                          <input type="checkbox" name={`${qq.key}-${i}`} value={op.label} />
+                        <label
+                          key={`${qq.key}-${i}`}
+                          className="flex items-center gap-2 text-sm text-gray-700"
+                        >
+                          <input
+                            type="checkbox"
+                            name={`${qq.key}-${i}`}
+                            value={op.label}
+                          />
                           {op.label}
                         </label>
                       ))}
                     </div>
                   )}
 
-                  {qq.type === ('text' as QuestionType) && (
+                  {qq.type === ("text" as QuestionType) && (
                     <div className="mt-3">
                       <input
                         className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
@@ -128,7 +146,10 @@ export default function QuestionnaireDetailsPage() {
             </div>
           </div>
 
-          <Button className="w-full" disabled={q.type === 'OTHER' && !respondent}>
+          <Button
+            className="w-full"
+            disabled={q.type === "OTHER" && !respondent}
+          >
             Save (mock)
           </Button>
         </CardContent>

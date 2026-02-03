@@ -1,11 +1,17 @@
-'use client';
+"use client";
 
-import { useState, useEffect, Suspense } from 'react';
-import Link from 'next/link';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Alert, AlertDescription } from '@/components/ui/alert';
+import { useState, useEffect, Suspense } from "react";
+import Link from "next/link";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import {
   Table,
   TableBody,
@@ -13,27 +19,27 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from '@/components/ui/table';
-import { Plus, Search, Edit2, Trash2, Eye, AlertCircle, X } from 'lucide-react';
-import type { Patient } from '@/types';
+} from "@/components/ui/table";
+import { Plus, Search, Edit2, Trash2, Eye, AlertCircle, X } from "lucide-react";
+import type { Patient } from "@/types";
 
 const Loading = () => null;
 
 // ---------------- API ----------------
-const API_BASE = 'http://10.0.30.73:8000/api/v1';
+const API_BASE = "http://10.0.30.175:8000/api/v1";
 const PATIENTS_LIST_URL = `${API_BASE}/patients/list/`;
 
 // ---------------- Types ----------------
-type Sex = 'M' | 'F' | 'O';
-type Handedness = 'right' | 'left';
+type Sex = "M" | "F" | "O";
+type Handedness = "right" | "left";
 
 type PatientForm = {
   name: string;
   surname: string;
-  sex: Sex | '';
+  sex: Sex | "";
   dateOfBirth: string; // YYYY-MM-DD
   yearsOfEducation: string; // keep string for input then parse
-  handedness: Handedness | '';
+  handedness: Handedness | "";
 };
 
 type ApiPatient = {
@@ -57,16 +63,16 @@ type ApiListResponse = {
 
 // ---------------- Helpers ----------------
 const apiSexToUiSex = (sex: string): Sex => {
-  const s = (sex || '').toLowerCase();
-  if (s === 'male' || s === 'm') return 'M';
-  if (s === 'female' || s === 'f') return 'F';
-  return 'O';
+  const s = (sex || "").toLowerCase();
+  if (s === "male" || s === "m") return "M";
+  if (s === "female" || s === "f") return "F";
+  return "O";
 };
 
 const uiSexToApiSex = (sex: Sex): string => {
-  if (sex === 'M') return 'male';
-  if (sex === 'F') return 'female';
-  return 'other';
+  if (sex === "M") return "male";
+  if (sex === "F") return "female";
+  return "other";
 };
 
 const mapApiPatientToUi = (p: ApiPatient): Patient => ({
@@ -76,15 +82,15 @@ const mapApiPatientToUi = (p: ApiPatient): Patient => ({
   sex: apiSexToUiSex(p.sex) as any,
   dateOfBirth: p.birth,
   yearsOfEducation: p.education,
-  handedness: (p.handedness || '').toLowerCase() as any,
+  handedness: (p.handedness || "").toLowerCase() as any,
   createdAt: p.created_at,
   updatedAt: p.updated_at,
 });
 
 const getAge = (dob?: string) => {
-  if (!dob) return '';
+  if (!dob) return "";
   const d = new Date(dob);
-  if (Number.isNaN(d.getTime())) return '';
+  if (Number.isNaN(d.getTime())) return "";
   const today = new Date();
   let age = today.getFullYear() - d.getFullYear();
   const m = today.getMonth() - d.getMonth();
@@ -99,24 +105,25 @@ const applySearch = (base: Patient[], term: string) => {
 
   return base.filter((p) => {
     const age = getAge(p.dateOfBirth);
-    const sexLabel = p.sex === 'M' ? 'male' : p.sex === 'F' ? 'female' : 'other';
+    const sexLabel =
+      p.sex === "M" ? "male" : p.sex === "F" ? "female" : "other";
 
     const haystack = [
       p.name,
       p.surname,
       `${p.name} ${p.surname}`,
-      String(p.id ?? ''),
+      String(p.id ?? ""),
       p.sex,
       sexLabel,
       p.dateOfBirth,
       age,
-      String(p.yearsOfEducation ?? ''),
-      p.handedness ?? '',
-      p.createdAt ?? '',
-      p.updatedAt ?? '',
+      String(p.yearsOfEducation ?? ""),
+      p.handedness ?? "",
+      p.createdAt ?? "",
+      p.updatedAt ?? "",
     ]
       .filter(Boolean)
-      .join(' ')
+      .join(" ")
       .toLowerCase();
 
     return haystack.includes(t);
@@ -126,46 +133,46 @@ const applySearch = (base: Patient[], term: string) => {
 export default function PatientsPage() {
   const [patients, setPatients] = useState<Patient[]>([]);
   const [filteredPatients, setFilteredPatients] = useState<Patient[]>([]);
-  const [searchTerm, setSearchTerm] = useState('');
+  const [searchTerm, setSearchTerm] = useState("");
   const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string>('');
+  const [error, setError] = useState<string>("");
 
   // ---- Modal state ----
   const [isAddOpen, setIsAddOpen] = useState(false);
   const [form, setForm] = useState<PatientForm>({
-    name: '',
-    surname: '',
-    sex: '',
-    dateOfBirth: '',
-    yearsOfEducation: '',
-    handedness: '',
+    name: "",
+    surname: "",
+    sex: "",
+    dateOfBirth: "",
+    yearsOfEducation: "",
+    handedness: "",
   });
-  const [formError, setFormError] = useState<string>('');
+  const [formError, setFormError] = useState<string>("");
 
   const loadPatients = async () => {
     try {
       setIsLoading(true);
-      setError('');
+      setError("");
 
-      const token = localStorage.getItem('accessToken');
+      const token = localStorage.getItem("accessToken");
       if (!token) {
-        setError('Authentication required');
+        setError("Authentication required");
         return;
       }
 
       const res = await fetch(PATIENTS_LIST_URL, {
-        method: 'GET',
+        method: "GET",
         headers: {
-          'Content-Type': 'application/json',
+          "Content-Type": "application/json",
           Authorization: `Bearer ${token}`, // যদি Token auth হয়: `Token ${token}`
         },
-        cache: 'no-store',
+        cache: "no-store",
       });
 
-      const json: ApiListResponse = await res.json().catch(() => ({} as any));
+      const json: ApiListResponse = await res.json().catch(() => ({}) as any);
 
       if (!res.ok || !json?.success) {
-        throw new Error(json?.message || 'Failed to load patients');
+        throw new Error(json?.message || "Failed to load patients");
       }
 
       const list = (json.data || []).map(mapApiPatientToUi);
@@ -173,7 +180,7 @@ export default function PatientsPage() {
       setPatients(list);
       setFilteredPatients(applySearch(list, searchTerm));
     } catch (err: any) {
-      setError(err?.message || 'Failed to load patients');
+      setError(err?.message || "Failed to load patients");
     } finally {
       setIsLoading(false);
     }
@@ -192,7 +199,7 @@ export default function PatientsPage() {
   const handleSearch = (term: string) => setSearchTerm(term);
 
   const handleDelete = async (patientId: number) => {
-    if (!confirm('Are you sure you want to delete this patient?')) return;
+    if (!confirm("Are you sure you want to delete this patient?")) return;
 
     // TODO: delete endpoint থাকলে integrate করবো
     const next = patients.filter((p) => p.id !== patientId);
@@ -201,37 +208,38 @@ export default function PatientsPage() {
 
   // ---- Add modal handlers ----
   const openAdd = () => {
-    setFormError('');
+    setFormError("");
     setForm({
-      name: '',
-      surname: '',
-      sex: '',
-      dateOfBirth: '',
-      yearsOfEducation: '',
-      handedness: '',
+      name: "",
+      surname: "",
+      sex: "",
+      dateOfBirth: "",
+      yearsOfEducation: "",
+      handedness: "",
     });
     setIsAddOpen(true);
   };
 
   const closeAdd = () => {
     setIsAddOpen(false);
-    setFormError('');
+    setFormError("");
   };
 
   const validateForm = () => {
-    if (!form.name.trim()) return 'Name is required.';
-    if (!form.surname.trim()) return 'Surname is required.';
-    if (!form.sex) return 'Sex is required.';
-    if (!form.dateOfBirth) return 'Date of birth is required.';
-    if (!form.yearsOfEducation) return 'Years of education is required.';
+    if (!form.name.trim()) return "Name is required.";
+    if (!form.surname.trim()) return "Surname is required.";
+    if (!form.sex) return "Sex is required.";
+    if (!form.dateOfBirth) return "Date of birth is required.";
+    if (!form.yearsOfEducation) return "Years of education is required.";
     const y = Number(form.yearsOfEducation);
-    if (!Number.isFinite(y) || y < 0 || y > 40) return 'Years of education must be between 0 and 40.';
-    if (!form.handedness) return 'Handedness is required.';
-    return '';
+    if (!Number.isFinite(y) || y < 0 || y > 40)
+      return "Years of education must be between 0 and 40.";
+    if (!form.handedness) return "Handedness is required.";
+    return "";
   };
 
   const handleAddPatient = async () => {
-    setFormError('');
+    setFormError("");
     const msg = validateForm();
     if (msg) {
       setFormError(msg);
@@ -239,9 +247,9 @@ export default function PatientsPage() {
     }
 
     try {
-      const token = localStorage.getItem('accessToken');
+      const token = localStorage.getItem("accessToken");
       if (!token) {
-        setFormError('Authentication required');
+        setFormError("Authentication required");
         return;
       }
 
@@ -255,28 +263,28 @@ export default function PatientsPage() {
       };
 
       const res = await fetch(PATIENTS_LIST_URL, {
-        method: 'POST',
+        method: "POST",
         headers: {
-          'Content-Type': 'application/json',
+          "Content-Type": "application/json",
           Authorization: `Bearer ${token}`, // যদি Token auth হয়: `Token ${token}`
         },
         body: JSON.stringify(payload),
       });
 
-      const json = await res.json().catch(() => ({} as any));
+      const json = await res.json().catch(() => ({}) as any);
 
       if (!res.ok || !json?.success) {
         const errMsg =
           json?.message ||
-          (typeof json?.data === 'string' ? json.data : '') ||
-          'Failed to create patient';
+          (typeof json?.data === "string" ? json.data : "") ||
+          "Failed to create patient";
         throw new Error(errMsg);
       }
 
       await loadPatients(); // most reliable
       closeAdd();
     } catch (err: any) {
-      setFormError(err?.message || 'Failed to create patient');
+      setFormError(err?.message || "Failed to create patient");
     }
   };
 
@@ -311,7 +319,10 @@ export default function PatientsPage() {
           <CardContent>
             <div className="flex gap-2">
               <div className="flex-1 relative">
-                <Search className="absolute left-3 top-3 text-gray-400" size={20} />
+                <Search
+                  className="absolute left-3 top-3 text-gray-400"
+                  size={20}
+                />
                 <Input
                   placeholder="Search by name, age, sex, education..."
                   value={searchTerm}
@@ -327,14 +338,20 @@ export default function PatientsPage() {
         <Card>
           <CardHeader>
             <CardTitle>Patients ({filteredPatients.length})</CardTitle>
-            <CardDescription>Complete list of registered patients</CardDescription>
+            <CardDescription>
+              Complete list of registered patients
+            </CardDescription>
           </CardHeader>
           <CardContent>
             {isLoading ? (
-              <div className="text-center py-8 text-gray-600">Loading patients...</div>
+              <div className="text-center py-8 text-gray-600">
+                Loading patients...
+              </div>
             ) : filteredPatients.length === 0 ? (
               <div className="text-center py-8 text-gray-600">
-                {searchTerm ? 'No patients found matching your search' : 'No patients yet'}
+                {searchTerm
+                  ? "No patients found matching your search"
+                  : "No patients yet"}
               </div>
             ) : (
               <div className="overflow-x-auto">
@@ -343,11 +360,19 @@ export default function PatientsPage() {
                     <TableRow className="bg-gray-50">
                       <TableHead className="font-semibold">Name</TableHead>
                       <TableHead className="font-semibold">Sex</TableHead>
-                      <TableHead className="font-semibold">Date of Birth</TableHead>
+                      <TableHead className="font-semibold">
+                        Date of Birth
+                      </TableHead>
                       <TableHead className="font-semibold">Education</TableHead>
-                      <TableHead className="font-semibold">Handedness</TableHead>
-                      <TableHead className="font-semibold">Registered</TableHead>
-                      <TableHead className="font-semibold text-right">Actions</TableHead>
+                      <TableHead className="font-semibold">
+                        Handedness
+                      </TableHead>
+                      <TableHead className="font-semibold">
+                        Registered
+                      </TableHead>
+                      <TableHead className="font-semibold text-right">
+                        Actions
+                      </TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -357,27 +382,53 @@ export default function PatientsPage() {
                           {patient.name} {patient.surname}
                         </TableCell>
                         <TableCell>
-                          {patient.sex === 'M' ? 'Male' : patient.sex === 'F' ? 'Female' : 'Other'}
+                          {patient.sex === "M"
+                            ? "Male"
+                            : patient.sex === "F"
+                              ? "Female"
+                              : "Other"}
                         </TableCell>
                         <TableCell>
                           {patient.dateOfBirth
-                            ? new Date(patient.dateOfBirth).toLocaleDateString('it-IT')
-                            : '–'}
+                            ? new Date(patient.dateOfBirth).toLocaleDateString(
+                                "it-IT",
+                              )
+                            : "–"}
                         </TableCell>
-                        <TableCell>{patient.yearsOfEducation || '–'} years</TableCell>
-                        <TableCell>{patient.handedness || '–'}</TableCell>
+                        <TableCell>
+                          {patient.yearsOfEducation || "–"} years
+                        </TableCell>
+                        <TableCell>{patient.handedness || "–"}</TableCell>
                         <TableCell className="text-sm text-gray-600">
-                          {patient.createdAt ? new Date(patient.createdAt).toLocaleDateString('it-IT') : '–'}
+                          {patient.createdAt
+                            ? new Date(patient.createdAt).toLocaleDateString(
+                                "it-IT",
+                              )
+                            : "–"}
                         </TableCell>
                         <TableCell className="text-right">
                           <div className="flex gap-2 justify-end">
-                            <Link href={`/admin/dashboard/patients/${patient.id}`}>
-                              <Button variant="ghost" size="sm" className="gap-1" title="View details">
+                            <Link
+                              href={`/admin/dashboard/patients/${patient.id}`}
+                            >
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="gap-1"
+                                title="View details"
+                              >
                                 <Eye size={16} />
                               </Button>
                             </Link>
-                            <Link href={`/admin/dashboard/patients/${patient.id}/edit`}>
-                              <Button variant="ghost" size="sm" className="gap-1" title="Edit patient">
+                            <Link
+                              href={`/admin/dashboard/patients/${patient.id}/edit`}
+                            >
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="gap-1"
+                                title="Edit patient"
+                              >
                                 <Edit2 size={16} />
                               </Button>
                             </Link>
@@ -412,8 +463,12 @@ export default function PatientsPage() {
             <div className="w-full max-w-lg rounded-xl bg-white shadow-xl">
               <div className="flex items-center justify-between border-b px-5 py-4">
                 <div>
-                  <h2 className="text-lg font-semibold text-gray-900">Add Patient</h2>
-                  <p className="text-sm text-gray-600">Create a new patient profile</p>
+                  <h2 className="text-lg font-semibold text-gray-900">
+                    Add Patient
+                  </h2>
+                  <p className="text-sm text-gray-600">
+                    Create a new patient profile
+                  </p>
                 </div>
                 <button
                   onClick={closeAdd}
@@ -433,29 +488,41 @@ export default function PatientsPage() {
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <label className="text-sm font-medium text-gray-700">Name</label>
+                    <label className="text-sm font-medium text-gray-700">
+                      Name
+                    </label>
                     <Input
                       value={form.name}
-                      onChange={(e) => setForm((p) => ({ ...p, name: e.target.value }))}
+                      onChange={(e) =>
+                        setForm((p) => ({ ...p, name: e.target.value }))
+                      }
                       placeholder="e.g. Giovanni"
                     />
                   </div>
 
                   <div className="space-y-2">
-                    <label className="text-sm font-medium text-gray-700">Surname</label>
+                    <label className="text-sm font-medium text-gray-700">
+                      Surname
+                    </label>
                     <Input
                       value={form.surname}
-                      onChange={(e) => setForm((p) => ({ ...p, surname: e.target.value }))}
+                      onChange={(e) =>
+                        setForm((p) => ({ ...p, surname: e.target.value }))
+                      }
                       placeholder="e.g. Rossi"
                     />
                   </div>
 
                   <div className="space-y-2">
-                    <label className="text-sm font-medium text-gray-700">Sex</label>
+                    <label className="text-sm font-medium text-gray-700">
+                      Sex
+                    </label>
                     <select
                       className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
                       value={form.sex}
-                      onChange={(e) => setForm((p) => ({ ...p, sex: e.target.value as any }))}
+                      onChange={(e) =>
+                        setForm((p) => ({ ...p, sex: e.target.value as any }))
+                      }
                     >
                       <option value="">Select...</option>
                       <option value="M">Male</option>
@@ -465,32 +532,50 @@ export default function PatientsPage() {
                   </div>
 
                   <div className="space-y-2">
-                    <label className="text-sm font-medium text-gray-700">Date of Birth</label>
+                    <label className="text-sm font-medium text-gray-700">
+                      Date of Birth
+                    </label>
                     <Input
                       type="date"
                       value={form.dateOfBirth}
-                      onChange={(e) => setForm((p) => ({ ...p, dateOfBirth: e.target.value }))}
+                      onChange={(e) =>
+                        setForm((p) => ({ ...p, dateOfBirth: e.target.value }))
+                      }
                     />
                   </div>
 
                   <div className="space-y-2">
-                    <label className="text-sm font-medium text-gray-700">Years of Education</label>
+                    <label className="text-sm font-medium text-gray-700">
+                      Years of Education
+                    </label>
                     <Input
                       type="number"
                       min={0}
                       max={40}
                       value={form.yearsOfEducation}
-                      onChange={(e) => setForm((p) => ({ ...p, yearsOfEducation: e.target.value }))}
+                      onChange={(e) =>
+                        setForm((p) => ({
+                          ...p,
+                          yearsOfEducation: e.target.value,
+                        }))
+                      }
                       placeholder="e.g. 13"
                     />
                   </div>
 
                   <div className="space-y-2">
-                    <label className="text-sm font-medium text-gray-700">Handedness</label>
+                    <label className="text-sm font-medium text-gray-700">
+                      Handedness
+                    </label>
                     <select
                       className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
                       value={form.handedness}
-                      onChange={(e) => setForm((p) => ({ ...p, handedness: e.target.value as any }))}
+                      onChange={(e) =>
+                        setForm((p) => ({
+                          ...p,
+                          handedness: e.target.value as any,
+                        }))
+                      }
                     >
                       <option value="">Select...</option>
                       <option value="right">Right</option>

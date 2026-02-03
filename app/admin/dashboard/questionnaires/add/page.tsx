@@ -1,21 +1,27 @@
-'use client';
+"use client";
 
-import React from "react"
+import React from "react";
 
-import { useState } from 'react';
-import { useRouter } from 'next/navigation';
-import Link from 'next/link';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Alert, AlertDescription } from '@/components/ui/alert';
+import { useState } from "react";
+import { useRouter } from "next/navigation";
+import Link from "next/link";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from '@/components/ui/select';
+} from "@/components/ui/select";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -33,8 +39,8 @@ import {
   DialogTitle,
   DialogTrigger,
   DialogFooter,
-} from '@/components/ui/dialog';
-import { Checkbox } from '@/components/ui/checkbox';
+} from "@/components/ui/dialog";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   ArrowLeft,
   Plus,
@@ -42,8 +48,8 @@ import {
   Save,
   AlertCircle,
   CheckCircle,
-} from 'lucide-react';
-import type { QuestionnaireType, QuestionType } from '@/types';
+} from "lucide-react";
+import type { QuestionnaireType, QuestionType } from "@/types";
 
 interface QuestionOption {
   id: string;
@@ -72,15 +78,15 @@ interface FormData {
 }
 
 type InformantRelationship =
-  | 'mother'
-  | 'father'
-  | 'partner'
-  | 'spouse'
-  | 'sibling'
-  | 'caregiver'
-  | 'other';
+  | "mother"
+  | "father"
+  | "partner"
+  | "spouse"
+  | "sibling"
+  | "caregiver"
+  | "other";
 
-  interface FormData {
+interface FormData {
   code: string;
   name: string;
   description: string;
@@ -91,63 +97,69 @@ type InformantRelationship =
 }
 
 const QUESTION_TYPES: { value: QuestionType; label: string }[] = [
-  { value: 'text', label: 'Text Input' },
-  { value: 'single_choice', label: 'Single Choice (Radio)' },
-  { value: 'multiple_choice', label: 'Multiple Choice (Checkboxes)' },
+  { value: "text", label: "Text Input" },
+  { value: "single_choice", label: "Single Choice (Radio)" },
+  { value: "multiple_choice", label: "Multiple Choice (Checkboxes)" },
 ];
 
 const QUESTIONNAIRE_TYPES: { value: QuestionnaireType; label: string }[] = [
-  { value: 'SELF', label: 'Self-Report' },
-  { value: 'OTHER', label: 'Other-Report' },
+  { value: "SELF", label: "Self-Report" },
+  { value: "OTHER", label: "Other-Report" },
 ];
 
 const SCORING_FIELDS = [
-  'disattenzione',
-  'iperattivita',
-  'impulsivita',
-  'sct',
-  'eta_inizio',
-  'ambiti_compromissione',
-  'diagnosi_precedente',
+  "disattenzione",
+  "iperattivita",
+  "impulsivita",
+  "sct",
+  "eta_inizio",
+  "ambiti_compromissione",
+  "diagnosi_precedente",
 ];
 
 export default function AddQuestionnairePage() {
   const router = useRouter();
   const [formData, setFormData] = useState<FormData>({
-    code: '',
-    name: '',
-    description: '',
-    type: 'SELF',
-    version: '1.0',
+    code: "",
+    name: "",
+    description: "",
+    type: "SELF",
+    version: "1.0",
     questions: [],
-      informantRelationship: undefined,
+    informantRelationship: undefined,
   });
 
-  const [error, setError] = useState<string>('');
+  const [error, setError] = useState<string>("");
   const [success, setSuccess] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [currentQuestion, setCurrentQuestion] = useState<FormQuestion>({
     id: Math.random().toString(),
     number: 1,
-    text: '',
-    type: 'single_choice',
+    text: "",
+    type: "single_choice",
     isMandatory: true,
     options: [],
   });
   const [showQuestionDialog, setShowQuestionDialog] = useState(false);
 
-  const handleBasicChange = (field: keyof Omit<FormData, 'questions'>, value: any) => {
+  const handleBasicChange = (
+    field: keyof Omit<FormData, "questions">,
+    value: any,
+  ) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
   };
 
   const handleAddQuestion = () => {
     if (!currentQuestion.text.trim()) {
-      setError('Please enter question text');
+      setError("Please enter question text");
       return;
     }
 
-    if (currentQuestion.type !== 'text' && currentQuestion.options.length === 0) {
-      setError('Please add at least one option for this question');
+    if (
+      currentQuestion.type !== "text" &&
+      currentQuestion.options.length === 0
+    ) {
+      setError("Please add at least one option for this question");
       return;
     }
 
@@ -164,14 +176,14 @@ export default function AddQuestionnairePage() {
     setCurrentQuestion({
       id: Math.random().toString(),
       number: formData.questions.length + 2,
-      text: '',
-      type: 'single_choice',
+      text: "",
+      type: "single_choice",
       isMandatory: true,
       options: [],
     });
 
     setShowQuestionDialog(false);
-    setError('');
+    setError("");
   };
 
   const handleRemoveQuestion = (id: string) => {
@@ -190,7 +202,7 @@ export default function AddQuestionnairePage() {
         ...prev.options,
         {
           id: Math.random().toString(),
-          text: '',
+          text: "",
           value: prev.options.length,
           order: prev.options.length + 1,
         },
@@ -209,14 +221,14 @@ export default function AddQuestionnairePage() {
 
   const handleOptionChange = (
     optionId: string,
-    field: 'text' | 'value',
+    field: "text" | "value",
     value: any,
   ) => {
     setCurrentQuestion((prev) => ({
       ...prev,
       options: prev.options.map((o) =>
         o.id === optionId
-          ? { ...o, [field]: field === 'value' ? Number(value) : value }
+          ? { ...o, [field]: field === "value" ? Number(value) : value }
           : o,
       ),
     }));
@@ -224,42 +236,43 @@ export default function AddQuestionnairePage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError('');
+    setError("");
 
     // Validation
     if (!formData.code.trim()) {
-      setError('Questionnaire code is required');
+      setError("Questionnaire code is required");
       return;
     }
     if (!formData.name.trim()) {
-      setError('Questionnaire name is required');
+      setError("Questionnaire name is required");
       return;
     }
     if (formData.questions.length === 0) {
-      setError('Please add at least one question');
+      setError("Please add at least one question");
       return;
     }
-    if (formData.type === 'OTHER' && !formData.informantRelationship) {
-  setError('Please select who is completing the questionnaire (required for Other-Report).');
-  return;
-}
-
+    if (formData.type === "OTHER" && !formData.informantRelationship) {
+      setError(
+        "Please select who is completing the questionnaire (required for Other-Report).",
+      );
+      return;
+    }
 
     try {
       setIsSubmitting(true);
 
       // Simulate API call
-      console.log('Submitting questionnaire:', formData);
+      console.log("Submitting questionnaire:", formData);
 
       // Mock success response
       setTimeout(() => {
         setSuccess(true);
         setTimeout(() => {
-          router.push('/admin/dashboard/questionnaires');
+          router.push("/admin/dashboard/questionnaires");
         }, 2000);
       }, 1000);
     } catch (err: any) {
-      setError(err?.message || 'Failed to create questionnaire');
+      setError(err?.message || "Failed to create questionnaire");
     } finally {
       setIsSubmitting(false);
     }
@@ -275,8 +288,12 @@ export default function AddQuestionnairePage() {
           </Button>
         </Link>
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">Create New Questionnaire</h1>
-          <p className="text-gray-600 mt-1">Define questions, options, and scoring criteria</p>
+          <h1 className="text-3xl font-bold text-gray-900">
+            Create New Questionnaire
+          </h1>
+          <p className="text-gray-600 mt-1">
+            Define questions, options, and scoring criteria
+          </p>
         </div>
       </div>
 
@@ -311,11 +328,13 @@ export default function AddQuestionnairePage() {
                 </label>
                 <Input
                   value={formData.code}
-                  onChange={(e) => handleBasicChange('code', e.target.value)}
+                  onChange={(e) => handleBasicChange("code", e.target.value)}
                   placeholder="e.g., BAARS_IV"
                   className="font-mono"
                 />
-                <p className="text-xs text-gray-500 mt-1">Unique identifier (uppercase)</p>
+                <p className="text-xs text-gray-500 mt-1">
+                  Unique identifier (uppercase)
+                </p>
               </div>
               {/* <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -335,7 +354,7 @@ export default function AddQuestionnairePage() {
               </label>
               <Input
                 value={formData.name}
-                onChange={(e) => handleBasicChange('name', e.target.value)}
+                onChange={(e) => handleBasicChange("name", e.target.value)}
                 placeholder="Full questionnaire name"
               />
             </div>
@@ -346,7 +365,9 @@ export default function AddQuestionnairePage() {
               </label>
               <textarea
                 value={formData.description}
-                onChange={(e) => handleBasicChange('description', e.target.value)}
+                onChange={(e) =>
+                  handleBasicChange("description", e.target.value)
+                }
                 placeholder="Brief description of the questionnaire"
                 className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                 rows={3}
@@ -358,18 +379,20 @@ export default function AddQuestionnairePage() {
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   Type *
                 </label>
-<Select
-  value={formData.type}
-  onValueChange={(value) => {
-    const nextType = value as QuestionnaireType;
-    setFormData((prev) => ({
-      ...prev,
-      type: nextType,
-      informantRelationship: nextType === 'OTHER' ? prev.informantRelationship : undefined,
-    }));
-  }}
->
-
+                <Select
+                  value={formData.type}
+                  onValueChange={(value) => {
+                    const nextType = value as QuestionnaireType;
+                    setFormData((prev) => ({
+                      ...prev,
+                      type: nextType,
+                      informantRelationship:
+                        nextType === "OTHER"
+                          ? prev.informantRelationship
+                          : undefined,
+                    }));
+                  }}
+                >
                   <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>
@@ -385,56 +408,58 @@ export default function AddQuestionnairePage() {
             </div>
           </CardContent>
 
-{formData.type === 'OTHER' && (
-  <div className="mt-4 border rounded-lg p-4 mx-5 bg-blue-50/50">
-    <p className="text-sm font-semibold text-gray-900 mb-1">
-      Informant Details (Required)
-    </p>
-    <p className="text-xs text-gray-600 mb-3">
-      This questionnaire will be filled by someone other than the patient.
-      Please select who is completing it. This field must be filled when "Other-Report" is selected.
-    </p>
+          {formData.type === "OTHER" && (
+            <div className="mt-4 border rounded-lg p-4 mx-5 bg-blue-50/50">
+              <p className="text-sm font-semibold text-gray-900 mb-1">
+                Informant Details (Required)
+              </p>
+              <p className="text-xs text-gray-600 mb-3">
+                This questionnaire will be filled by someone other than the
+                patient. Please select who is completing it. This field must be
+                filled when "Other-Report" is selected.
+              </p>
 
-    <div className="space-y-2">
-      <label className="block text-sm font-medium text-gray-700">
-        Who is completing this questionnaire? *
-      </label>
+              <div className="space-y-2">
+                <label className="block text-sm font-medium text-gray-700">
+                  Who is completing this questionnaire? *
+                </label>
 
-      <div className=" flex gap-2.5">
-        {[
-          { value: 'mother', label: 'Mother' },
-          { value: 'father', label: 'Father' },
-          { value: 'partner', label: 'Partner' },
-          { value: 'spouse', label: 'Spouse' },
-          { value: 'sibling', label: 'Sibling' },
-          { value: 'caregiver', label: 'Caregiver' },
-          { value: 'other', label: 'Other' },
-        ].map((item) => (
-          <label
-            key={item.value}
-            className="  inline-flex gap-2 rounded-md border bg-white px-3 py-2 cursor-pointer hover:bg-gray-50"
-          >
-            <input
-              type="radio"
-              name="informantRelationship"
-              value={item.value}
-              checked={formData.informantRelationship === item.value}
-              onChange={() =>
-                setFormData((prev) => ({
-                  ...prev,
-                  informantRelationship: item.value as InformantRelationship,
-                }))
-              }
-            />
-            <span className="text-sm text-gray-800">{item.label}</span>
-          </label>
-        ))}
-      </div>
-    </div>
-  </div>
-)}
-
-
+                <div className=" flex gap-2.5">
+                  {[
+                    { value: "mother", label: "Mother" },
+                    { value: "father", label: "Father" },
+                    { value: "partner", label: "Partner" },
+                    { value: "spouse", label: "Spouse" },
+                    { value: "sibling", label: "Sibling" },
+                    { value: "caregiver", label: "Caregiver" },
+                    { value: "other", label: "Other" },
+                  ].map((item) => (
+                    <label
+                      key={item.value}
+                      className="  inline-flex gap-2 rounded-md border bg-white px-3 py-2 cursor-pointer hover:bg-gray-50"
+                    >
+                      <input
+                        type="radio"
+                        name="informantRelationship"
+                        value={item.value}
+                        checked={formData.informantRelationship === item.value}
+                        onChange={() =>
+                          setFormData((prev) => ({
+                            ...prev,
+                            informantRelationship:
+                              item.value as InformantRelationship,
+                          }))
+                        }
+                      />
+                      <span className="text-sm text-gray-800">
+                        {item.label}
+                      </span>
+                    </label>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
         </Card>
 
         {/* Questions Management */}
@@ -444,7 +469,10 @@ export default function AddQuestionnairePage() {
               <CardTitle>Questions ({formData.questions.length})</CardTitle>
               <CardDescription>Add and configure all questions</CardDescription>
             </div>
-            <Dialog open={showQuestionDialog} onOpenChange={setShowQuestionDialog}>
+            <Dialog
+              open={showQuestionDialog}
+              onOpenChange={setShowQuestionDialog}
+            >
               <DialogTrigger asChild>
                 <Button className="gap-2">
                   <Plus size={20} />
@@ -453,7 +481,9 @@ export default function AddQuestionnairePage() {
               </DialogTrigger>
               <DialogContent className="w-full  overflow-y-auto">
                 <DialogHeader>
-                  <DialogTitle>Add Question #{formData.questions.length + 1}</DialogTitle>
+                  <DialogTitle>
+                    Add Question #{formData.questions.length + 1}
+                  </DialogTitle>
                   <DialogDescription>
                     Configure the question text, type, and answer options
                   </DialogDescription>
@@ -529,19 +559,27 @@ export default function AddQuestionnairePage() {
                         };
 
                         const clearAll = () => {
-                          setCurrentQuestion((prev) => ({ ...prev, scoringField: [] }));
+                          setCurrentQuestion((prev) => ({
+                            ...prev,
+                            scoringField: [],
+                          }));
                         };
 
                         return (
                           <DropdownMenu>
                             <DropdownMenuTrigger asChild>
-                              <Button variant="outline" className="w-full justify-between">
+                              <Button
+                                variant="outline"
+                                className="w-full justify-between"
+                              >
                                 {selected.length ? selected.join(", ") : "None"}
                               </Button>
                             </DropdownMenuTrigger>
 
                             <DropdownMenuContent className="w-[--radix-dropdown-menu-trigger-width] max-h-64 overflow-auto">
-                              <DropdownMenuLabel>Scoring Fields</DropdownMenuLabel>
+                              <DropdownMenuLabel>
+                                Scoring Fields
+                              </DropdownMenuLabel>
                               <DropdownMenuSeparator />
 
                               <DropdownMenuCheckboxItem
@@ -567,7 +605,6 @@ export default function AddQuestionnairePage() {
                         );
                       })()}
                     </div>
-
                   </div>
 
                   <div className="flex items-center gap-2">
@@ -581,12 +618,15 @@ export default function AddQuestionnairePage() {
                         }))
                       }
                     />
-                    <label htmlFor="mandatory" className="text-sm text-gray-700 cursor-pointer">
+                    <label
+                      htmlFor="mandatory"
+                      className="text-sm text-gray-700 cursor-pointer"
+                    >
                       This is a mandatory question
                     </label>
                   </div>
 
-                  {currentQuestion.type !== 'text' && (
+                  {currentQuestion.type !== "text" && (
                     <div className="space-y-3 border-t pt-4">
                       <div className="flex items-center justify-between">
                         <label className="block text-sm font-medium text-gray-700">
@@ -607,23 +647,35 @@ export default function AddQuestionnairePage() {
                         {currentQuestion.options.map((option, idx) => (
                           <div key={option.id} className="flex gap-2 items-end">
                             <div className="flex-1">
-                              <label className="text-xs text-gray-600">Option {idx + 1}</label>
+                              <label className="text-xs text-gray-600">
+                                Option {idx + 1}
+                              </label>
                               <Input
                                 value={option.text}
                                 onChange={(e) =>
-                                  handleOptionChange(option.id, 'text', e.target.value)
+                                  handleOptionChange(
+                                    option.id,
+                                    "text",
+                                    e.target.value,
+                                  )
                                 }
                                 placeholder="Option text"
                                 className="text-sm"
                               />
                             </div>
                             <div className="w-20">
-                              <label className="text-xs text-gray-600">Value</label>
+                              <label className="text-xs text-gray-600">
+                                Value
+                              </label>
                               <Input
                                 type="number"
                                 value={idx + 1}
                                 onChange={(e) =>
-                                  handleOptionChange(option.id, 'value', e.target.value)
+                                  handleOptionChange(
+                                    option.id,
+                                    "value",
+                                    e.target.value,
+                                  )
                                 }
                                 className="text-sm"
                               />
@@ -663,7 +715,9 @@ export default function AddQuestionnairePage() {
           <CardContent>
             {formData.questions.length === 0 ? (
               <div className="text-center py-8 text-gray-500">
-                <p>No questions added yet. Click "Add Question" to get started.</p>
+                <p>
+                  No questions added yet. Click "Add Question" to get started.
+                </p>
               </div>
             ) : (
               <div className="space-y-3">

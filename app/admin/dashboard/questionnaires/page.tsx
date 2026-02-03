@@ -1,27 +1,49 @@
-'use client';
+"use client";
 
-import { useEffect, useMemo, useState } from 'react';
-import { useRouter } from 'next/navigation';
-import { makeSlug } from '@/src/lib/slug';
+import { useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
+import { makeSlug } from "@/src/lib/slug";
 
-import { useAppDispatch, useAppSelector } from '@/src/store/hooks';
-import { fetchPatients, setSelectedPatientId } from '@/src/store/slices/patientsSlice';
+import { useAppDispatch, useAppSelector } from "@/src/store/hooks";
+import {
+  fetchPatients,
+  setSelectedPatientId,
+} from "@/src/store/slices/patientsSlice";
 
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Checkbox } from '@/components/ui/checkbox';
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Checkbox } from "@/components/ui/checkbox";
 
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
-import { Copy, CheckCircle, AlertCircle } from 'lucide-react';
+import { Copy, CheckCircle, AlertCircle } from "lucide-react";
 
-import { QUESTIONNAIRE_REGISTRY } from '@/lib/questionnaires';
-import type { Patient, Questionnaire } from '@/src/types';
+import { QUESTIONNAIRE_REGISTRY } from "@/lib/questionnaires";
+import type { Patient, Questionnaire } from "@/src/types";
 
-type LinkType = 'all_self' | 'single_other';
+type LinkType = "all_self" | "single_other";
 
 interface GeneratedLink {
   type: LinkType;
@@ -56,8 +78,11 @@ export default function QuestionnairesPage() {
   const router = useRouter();
   const dispatch = useAppDispatch();
 
-  const { list: patientList, isLoading: isPatientsLoading, selectedPatientId } =
-    useAppSelector((s) => s.patients);
+  const {
+    list: patientList,
+    isLoading: isPatientsLoading,
+    selectedPatientId,
+  } = useAppSelector((s) => s.patients);
 
   useEffect(() => {
     if (!patientList.length) dispatch(fetchPatients());
@@ -65,40 +90,47 @@ export default function QuestionnairesPage() {
 
   const [assigning, setAssigning] = useState(false);
   const [questionnaires, setQuestionnaires] = useState<Questionnaire[]>([]);
-  const [selectedQuestionnaires, setSelectedQuestionnaires] = useState<number[]>([]);
+  const [selectedQuestionnaires, setSelectedQuestionnaires] = useState<
+    number[]
+  >([]);
   const [generatedLinks, setGeneratedLinks] = useState<GeneratedLink[]>([]);
-  const [error, setError] = useState<string>('');
-  const [copiedLink, setCopiedLink] = useState<string>('');
+  const [error, setError] = useState<string>("");
+  const [copiedLink, setCopiedLink] = useState<string>("");
   const [qLoading, setQLoading] = useState(true);
-  const [qSearch, setQSearch] = useState('');
+  const [qSearch, setQSearch] = useState("");
 
   // ✅ absolute URL builder
   const makeQuestionnaireUrl = (token: string) => {
-    const appUrl = (process.env.NEXT_PUBLIC_APP_URL || '').trim();
+    const appUrl = (process.env.NEXT_PUBLIC_APP_URL || "").trim();
 
     if (appUrl && /^https?:\/\//i.test(appUrl)) {
-      return `${appUrl.replace(/\/$/, '')}/questionnaire/${token}`;
+      return `${appUrl.replace(/\/$/, "")}/questionnaire/${token}`;
     }
 
-    const origin = typeof window !== 'undefined' ? window.location.origin : '';
+    const origin = typeof window !== "undefined" ? window.location.origin : "";
     if (!origin || !/^https?:\/\//i.test(origin)) {
-      throw new Error('Invalid APP URL. Set NEXT_PUBLIC_APP_URL like http://10.0.30.73:3000');
+      throw new Error(
+        "Invalid APP URL. Set NEXT_PUBLIC_APP_URL like http://10.0.30.175:3000",
+      );
     }
     return `${origin}/questionnaire/${token}`;
   };
 
-  function buildLinksPayload(all: Questionnaire[], selectedIds: number[]): AssignmentLinkPayload[] {
+  function buildLinksPayload(
+    all: Questionnaire[],
+    selectedIds: number[],
+  ): AssignmentLinkPayload[] {
     const picked = all.filter((q) => selectedIds.includes(q.id));
 
-    const self = picked.filter((q) => q.type === 'SELF');
-    const other = picked.filter((q) => q.type === 'OTHER');
+    const self = picked.filter((q) => q.type === "SELF");
+    const other = picked.filter((q) => q.type === "OTHER");
 
     const links: AssignmentLinkPayload[] = [];
 
     if (self.length) {
       const token = makeSlug(40);
       links.push({
-        link_type: 'all_self',
+        link_type: "all_self",
         token,
         questionnaires: self.map((q) => q.code),
         report_by: null,
@@ -109,7 +141,7 @@ export default function QuestionnairesPage() {
     for (const q of other) {
       const token = makeSlug(40);
       links.push({
-        link_type: 'single_other',
+        link_type: "single_other",
         token,
         questionnaires: [q.code],
         report_by: null, // later set from UI (mother/father/etc)
@@ -124,27 +156,29 @@ export default function QuestionnairesPage() {
   useEffect(() => {
     try {
       setQLoading(true);
-      setError('');
+      setError("");
 
       const modules = Object.values(QUESTIONNAIRE_REGISTRY) as any[];
 
       const list: Questionnaire[] = modules.map((m, idx) => ({
         id: idx + 1,
         code: String(m?.def?.formCode ?? m?.def?.code ?? `Q_${idx + 1}`),
-        name: String(m?.def?.name ?? 'Untitled'),
-        description: String(m?.def?.instruction ?? ''),
-        type: m?.def?.type === 'SELF' ? 'SELF' : 'OTHER',
-        category: String(m?.def?.code ?? ''),
-        questionCount: Array.isArray(m?.def?.questions) ? m.def.questions.length : 0,
-        createdAt: '2024-01-01',
+        name: String(m?.def?.name ?? "Untitled"),
+        description: String(m?.def?.instruction ?? ""),
+        type: m?.def?.type === "SELF" ? "SELF" : "OTHER",
+        category: String(m?.def?.code ?? ""),
+        questionCount: Array.isArray(m?.def?.questions)
+          ? m.def.questions.length
+          : 0,
+        createdAt: "2024-01-01",
 
         // ✅ REQUIRED BY YOUR TS TYPE
-        version: String(m?.def?.version ?? '1.0.0'),
+        version: String(m?.def?.version ?? "1.0.0"),
       }));
 
       setQuestionnaires(list);
     } catch (err: any) {
-      setError(err?.message || 'Failed to load questionnaires');
+      setError(err?.message || "Failed to load questionnaires");
     } finally {
       setQLoading(false);
     }
@@ -155,7 +189,7 @@ export default function QuestionnairesPage() {
     if (!t) return questionnaires;
 
     return questionnaires.filter((q) =>
-      `${q.name} ${q.description || ''} ${q.type || ''} ${q.code || ''} ${q.category || ''} ${q.version || ''}`
+      `${q.name} ${q.description || ""} ${q.type || ""} ${q.code || ""} ${q.category || ""} ${q.version || ""}`
         .toLowerCase()
         .includes(t),
     );
@@ -163,21 +197,26 @@ export default function QuestionnairesPage() {
 
   const handleSelectQuestionnaire = (questionnaireId: number) => {
     setSelectedQuestionnaires((prev) =>
-      prev.includes(questionnaireId) ? prev.filter((id) => id !== questionnaireId) : [...prev, questionnaireId],
+      prev.includes(questionnaireId)
+        ? prev.filter((id) => id !== questionnaireId)
+        : [...prev, questionnaireId],
     );
   };
 
   async function createAssignment(payload: any) {
-    const base = (process.env.NEXT_PUBLIC_API_BASE_URL || '').replace(/\/$/, '');
-    if (!base) throw new Error('NEXT_PUBLIC_API_BASE_URL missing');
+    const base = (process.env.NEXT_PUBLIC_API_BASE_URL || "").replace(
+      /\/$/,
+      "",
+    );
+    if (!base) throw new Error("NEXT_PUBLIC_API_BASE_URL missing");
 
     const url = `${base}/questionnaire/assignments/`;
-    const token = localStorage.getItem('accessToken');
+    const token = localStorage.getItem("accessToken");
 
     const res = await fetch(url, {
-      method: 'POST',
+      method: "POST",
       headers: {
-        'Content-Type': 'application/json',
+        "Content-Type": "application/json",
         ...(token ? { Authorization: `Bearer ${token}` } : {}),
       },
       body: JSON.stringify(payload),
@@ -187,29 +226,35 @@ export default function QuestionnairesPage() {
 
     // ✅ show backend validation details properly
     if (!res.ok || data?.success === false) {
-      const detail =
-        data?.error ? `\n\n${JSON.stringify(data.error, null, 2)}` :
-        data?.raw ? `\n\n${String(data.raw)}` :
-        '';
+      const detail = data?.error
+        ? `\n\n${JSON.stringify(data.error, null, 2)}`
+        : data?.raw
+          ? `\n\n${String(data.raw)}`
+          : "";
 
-      throw new Error(`${data?.message || data?.detail || 'Request failed'}${detail}`);
+      throw new Error(
+        `${data?.message || data?.detail || "Request failed"}${detail}`,
+      );
     }
 
     return data;
   }
 
   const handleAssignQuestionnaires = async () => {
-    setError('');
+    setError("");
 
     if (!selectedPatientId || selectedQuestionnaires.length === 0) {
-      setError('Please select a patient and at least one questionnaire');
+      setError("Please select a patient and at least one questionnaire");
       return;
     }
     if (assigning) return;
 
     setAssigning(true);
     try {
-      const linksPayload = buildLinksPayload(questionnaires, selectedQuestionnaires);
+      const linksPayload = buildLinksPayload(
+        questionnaires,
+        selectedQuestionnaires,
+      );
 
       const payload = {
         patient_id: Number(selectedPatientId),
@@ -226,23 +271,25 @@ export default function QuestionnairesPage() {
       };
 
       // Debug
-      console.log('DEBUG linksPayload:', linksPayload);
-      console.log('DEBUG payload:', payload);
+      console.log("DEBUG linksPayload:", linksPayload);
+      console.log("DEBUG payload:", payload);
 
       await createAssignment(payload);
 
       const uiLinks: GeneratedLink[] = linksPayload.map((l) => ({
         type: l.link_type,
-        url: l.url || '',
+        url: l.url || "",
         questionnaireName:
-          l.link_type === 'all_self' ? `${l.questionnaires.length} SELF questionnaires` : 'OTHER questionnaire',
-        expiresAt: 'Never',
+          l.link_type === "all_self"
+            ? `${l.questionnaires.length} SELF questionnaires`
+            : "OTHER questionnaire",
+        expiresAt: "Never",
       }));
 
       setGeneratedLinks(uiLinks);
     } catch (e: any) {
       // ✅ keep the real error (don’t overwrite with “Network error”)
-      setError(e?.message || 'Failed to assign questionnaires');
+      setError(e?.message || "Failed to assign questionnaires");
     } finally {
       setAssigning(false);
     }
@@ -252,12 +299,13 @@ export default function QuestionnairesPage() {
     try {
       await navigator.clipboard.writeText(url);
       setCopiedLink(url);
-      setTimeout(() => setCopiedLink(''), 2000);
+      setTimeout(() => setCopiedLink(""), 2000);
     } catch {}
   };
 
   const selectedPatientName =
-    patientList.find((p: Patient) => p.id.toString() === selectedPatientId)?.name || '';
+    patientList.find((p: Patient) => p.id.toString() === selectedPatientId)
+      ?.name || "";
 
   if (qLoading) {
     return (
@@ -279,7 +327,9 @@ export default function QuestionnairesPage() {
       {error && (
         <Alert variant="destructive">
           <AlertCircle className="h-4 w-4" />
-          <AlertDescription style={{ whiteSpace: 'pre-wrap' }}>{error}</AlertDescription>
+          <AlertDescription style={{ whiteSpace: "pre-wrap" }}>
+            {error}
+          </AlertDescription>
         </Alert>
       )}
 
@@ -287,16 +337,27 @@ export default function QuestionnairesPage() {
         <Card>
           <CardHeader>
             <CardTitle>Assign Questionnaires to Patient</CardTitle>
-            <CardDescription>Select a patient and choose which questionnaires to assign</CardDescription>
+            <CardDescription>
+              Select a patient and choose which questionnaires to assign
+            </CardDescription>
           </CardHeader>
 
           <CardContent className="space-y-6">
             <div className="space-y-2">
-              <label className="block text-sm font-medium text-gray-700">Select Patient</label>
+              <label className="block text-sm font-medium text-gray-700">
+                Select Patient
+              </label>
 
-              <Select value={selectedPatientId} onValueChange={(v) => dispatch(setSelectedPatientId(v))}>
+              <Select
+                value={selectedPatientId}
+                onValueChange={(v) => dispatch(setSelectedPatientId(v))}
+              >
                 <SelectTrigger>
-                  <SelectValue placeholder={isPatientsLoading ? 'Loading...' : 'Choose a patient...'} />
+                  <SelectValue
+                    placeholder={
+                      isPatientsLoading ? "Loading..." : "Choose a patient..."
+                    }
+                  />
                 </SelectTrigger>
 
                 <SelectContent>
@@ -314,11 +375,17 @@ export default function QuestionnairesPage() {
                 Select Questionnaires ({selectedQuestionnaires.length} selected)
               </label>
 
-              <Input placeholder="Search questionnaires..." value={qSearch} onChange={(e) => setQSearch(e.target.value)} />
+              <Input
+                placeholder="Search questionnaires..."
+                value={qSearch}
+                onChange={(e) => setQSearch(e.target.value)}
+              />
 
               <div className="border rounded-lg p-4 space-y-3 max-h-96 overflow-y-auto">
                 {filteredQuestionnaires.length === 0 ? (
-                  <p className="text-sm text-gray-600">No questionnaires found.</p>
+                  <p className="text-sm text-gray-600">
+                    No questionnaires found.
+                  </p>
                 ) : (
                   filteredQuestionnaires.map((q) => (
                     <div key={q.id} className="flex items-start gap-3">
@@ -328,12 +395,19 @@ export default function QuestionnairesPage() {
                         onCheckedChange={() => handleSelectQuestionnaire(q.id)}
                       />
                       <div className="flex-1">
-                        <label htmlFor={`q-${q.id}`} className="font-medium text-gray-900 cursor-pointer block">
+                        <label
+                          htmlFor={`q-${q.id}`}
+                          className="font-medium text-gray-900 cursor-pointer block"
+                        >
                           {q.name}
                         </label>
-                        <p className="text-sm text-gray-600 mt-1">{q.description}</p>
+                        <p className="text-sm text-gray-600 mt-1">
+                          {q.description}
+                        </p>
                         <div className="flex gap-2 mt-2 flex-wrap">
-                          <span className="px-2 py-1 bg-gray-100 text-gray-700 text-xs rounded">{q.type}</span>
+                          <span className="px-2 py-1 bg-gray-100 text-gray-700 text-xs rounded">
+                            {q.type}
+                          </span>
                           <span className="px-2 py-1 bg-blue-100 text-blue-700 text-xs rounded">
                             {q.questionCount} questions
                           </span>
@@ -350,10 +424,14 @@ export default function QuestionnairesPage() {
 
             <Button
               onClick={handleAssignQuestionnaires}
-              disabled={assigning || !selectedPatientId || selectedQuestionnaires.length === 0}
+              disabled={
+                assigning ||
+                !selectedPatientId ||
+                selectedQuestionnaires.length === 0
+              }
               className="w-full"
             >
-              {assigning ? 'Assigning...' : 'Generate Links & Assign'}
+              {assigning ? "Assigning..." : "Generate Links & Assign"}
             </Button>
           </CardContent>
         </Card>
@@ -364,32 +442,53 @@ export default function QuestionnairesPage() {
               <CheckCircle size={24} />
               Questionnaires Assigned Successfully
             </CardTitle>
-            <CardDescription>Generated secure links for {selectedPatientName}</CardDescription>
+            <CardDescription>
+              Generated secure links for {selectedPatientName}
+            </CardDescription>
           </CardHeader>
 
           <CardContent className="space-y-4">
             {generatedLinks.map((link, index) => (
-              <div key={index} className="bg-white p-4 rounded-lg border border-green-200">
+              <div
+                key={index}
+                className="bg-white p-4 rounded-lg border border-green-200"
+              >
                 <div className="flex items-start justify-between mb-3">
                   <div>
-                    <p className="font-semibold text-gray-900">{link.questionnaireName}</p>
-                    <p className="text-sm text-gray-600">Expires: {link.expiresAt}</p>
+                    <p className="font-semibold text-gray-900">
+                      {link.questionnaireName}
+                    </p>
+                    <p className="text-sm text-gray-600">
+                      Expires: {link.expiresAt}
+                    </p>
                   </div>
                   <span className="px-2 py-1 bg-blue-100 text-blue-700 text-xs rounded">
-                    {link.type === 'all_self' ? 'Self-Report' : 'Informant'}
+                    {link.type === "all_self" ? "Self-Report" : "Informant"}
                   </span>
                 </div>
 
                 <div className="flex gap-2">
-                  <Input value={link.url} readOnly className="text-sm font-mono" />
-                  <Button variant="outline" onClick={() => copyToClipboard(link.url)} className="gap-1">
+                  <Input
+                    value={link.url}
+                    readOnly
+                    className="text-sm font-mono"
+                  />
+                  <Button
+                    variant="outline"
+                    onClick={() => copyToClipboard(link.url)}
+                    className="gap-1"
+                  >
                     <Copy size={16} />
-                    {copiedLink === link.url ? 'Copied!' : 'Copy'}
+                    {copiedLink === link.url ? "Copied!" : "Copy"}
                   </Button>
                 </div>
 
                 <div className="mt-3 flex gap-2">
-                  <Button variant="ghost" size="sm" onClick={() => window.open(link.url, '_blank')}>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => window.open(link.url, "_blank")}
+                  >
                     Preview
                   </Button>
                 </div>
@@ -402,7 +501,7 @@ export default function QuestionnairesPage() {
               onClick={() => {
                 setGeneratedLinks([]);
                 setSelectedQuestionnaires([]);
-                dispatch(setSelectedPatientId(''));
+                dispatch(setSelectedPatientId(""));
               }}
             >
               Assign More Questionnaires
@@ -414,7 +513,9 @@ export default function QuestionnairesPage() {
       <Card>
         <CardHeader>
           <CardTitle>Available Questionnaires</CardTitle>
-          <CardDescription>Complete list of diagnostic assessments</CardDescription>
+          <CardDescription>
+            Complete list of diagnostic assessments
+          </CardDescription>
         </CardHeader>
 
         <CardContent>
@@ -435,11 +536,15 @@ export default function QuestionnairesPage() {
                     key={q.id}
                     role="button"
                     tabIndex={0}
-                    onClick={() => router.push(`/admin/dashboard/questionnaires/${q.code}`)}
+                    onClick={() =>
+                      router.push(`/admin/dashboard/questionnaires/${q.code}`)
+                    }
                     onKeyDown={(e) => {
-                      if (e.key === 'Enter' || e.key === ' ') {
+                      if (e.key === "Enter" || e.key === " ") {
                         e.preventDefault();
-                        router.push(`/admin/dashboard/questionnaires/${q.code}`);
+                        router.push(
+                          `/admin/dashboard/questionnaires/${q.code}`,
+                        );
                       }
                     }}
                     className="cursor-pointer hover:bg-gray-50"
@@ -447,22 +552,32 @@ export default function QuestionnairesPage() {
                     <TableCell className="font-medium">
                       <div className="flex flex-col">
                         <span className="text-gray-900">{q.name}</span>
-                        {q.description ? <span className="text-xs text-gray-500 line-clamp-1">{q.description}</span> : null}
+                        {q.description ? (
+                          <span className="text-xs text-gray-500 line-clamp-1">
+                            {q.description}
+                          </span>
+                        ) : null}
                       </div>
                     </TableCell>
 
                     <TableCell>
                       <span
                         className={`inline-flex items-center px-2 py-1 rounded text-xs font-medium ${
-                          q.type === 'SELF' ? 'bg-blue-100 text-blue-700' : 'bg-green-100 text-green-700'
+                          q.type === "SELF"
+                            ? "bg-blue-100 text-blue-700"
+                            : "bg-green-100 text-green-700"
                         }`}
                       >
                         {q.type}
                       </span>
                     </TableCell>
 
-                    <TableCell className="text-gray-700">{q.category}</TableCell>
-                    <TableCell className="text-gray-700">{q.questionCount}</TableCell>
+                    <TableCell className="text-gray-700">
+                      {q.category}
+                    </TableCell>
+                    <TableCell className="text-gray-700">
+                      {q.questionCount}
+                    </TableCell>
                   </TableRow>
                 ))}
               </TableBody>

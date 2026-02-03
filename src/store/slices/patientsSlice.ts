@@ -1,10 +1,10 @@
-import { createAsyncThunk, createSlice, PayloadAction } from '@reduxjs/toolkit';
-import type { Patient } from '@/types';
+import { createAsyncThunk, createSlice, PayloadAction } from "@reduxjs/toolkit";
+import type { Patient } from "@/types";
 
-const API_BASE = 'http://10.0.30.73:8000/api/v1';
+const API_BASE = "http://10.0.30.175:8000/api/v1";
 const PATIENTS_LIST_URL = `${API_BASE}/patients/list/`;
 
-type Sex = 'M' | 'F' | 'O';
+type Sex = "M" | "F" | "O";
 
 type ApiPatient = {
   id: number;
@@ -26,10 +26,10 @@ type ApiListResponse = {
 };
 
 const apiSexToUiSex = (sex: string): Sex => {
-  const s = (sex || '').toLowerCase();
-  if (s === 'male' || s === 'm') return 'M';
-  if (s === 'female' || s === 'f') return 'F';
-  return 'O';
+  const s = (sex || "").toLowerCase();
+  if (s === "male" || s === "m") return "M";
+  if (s === "female" || s === "f") return "F";
+  return "O";
 };
 
 const mapApiPatientToUi = (p: ApiPatient): Patient => ({
@@ -39,7 +39,7 @@ const mapApiPatientToUi = (p: ApiPatient): Patient => ({
   sex: apiSexToUiSex(p.sex) as any,
   dateOfBirth: p.birth,
   yearsOfEducation: p.education,
-  handedness: (p.handedness || '').toLowerCase() as any,
+  handedness: (p.handedness || "").toLowerCase() as any,
   createdAt: p.created_at,
   updatedAt: p.updated_at,
 });
@@ -56,44 +56,43 @@ const initialState: PatientsState = {
   list: [],
   isLoading: false,
   error: null,
-  selectedPatientId: '',
+  selectedPatientId: "",
   selectedPatientBirth: null,
 };
-
 
 // ✅ thunk: patients load
 export const fetchPatients = createAsyncThunk<
   Patient[],
   void,
   { rejectValue: string }
->('patients/fetchPatients', async (_, { rejectWithValue }) => {
+>("patients/fetchPatients", async (_, { rejectWithValue }) => {
   try {
-    const token = localStorage.getItem('accessToken');
-    if (!token) return rejectWithValue('Authentication required');
+    const token = localStorage.getItem("accessToken");
+    if (!token) return rejectWithValue("Authentication required");
 
     const res = await fetch(PATIENTS_LIST_URL, {
-      method: 'GET',
+      method: "GET",
       headers: {
-        'Content-Type': 'application/json',
+        "Content-Type": "application/json",
         Authorization: `Bearer ${token}`, // যদি Token auth হয়: `Token ${token}`
       },
-      cache: 'no-store',
+      cache: "no-store",
     });
 
-    const json: ApiListResponse = await res.json().catch(() => ({} as any));
+    const json: ApiListResponse = await res.json().catch(() => ({}) as any);
 
     if (!res.ok || !json?.success) {
-      return rejectWithValue(json?.message || 'Failed to load patients');
+      return rejectWithValue(json?.message || "Failed to load patients");
     }
 
     return (json.data || []).map(mapApiPatientToUi);
   } catch (e: any) {
-    return rejectWithValue(e?.message || 'Failed to load patients');
+    return rejectWithValue(e?.message || "Failed to load patients");
   }
 });
 
 const patientsSlice = createSlice({
-  name: 'patients',
+  name: "patients",
   initialState,
   reducers: {
     setSelectedPatientId(state, action: PayloadAction<string>) {
@@ -101,7 +100,7 @@ const patientsSlice = createSlice({
     },
     clearPatients(state) {
       state.list = [];
-      state.selectedPatientId = '';
+      state.selectedPatientId = "";
       state.isLoading = false;
       state.error = null;
     },
@@ -118,7 +117,7 @@ const patientsSlice = createSlice({
       })
       .addCase(fetchPatients.rejected, (state, action) => {
         state.isLoading = false;
-        state.error = action.payload || 'Failed to load patients';
+        state.error = action.payload || "Failed to load patients";
       });
   },
 });
