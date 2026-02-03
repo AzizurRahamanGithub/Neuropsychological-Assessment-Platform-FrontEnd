@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 
-import { ArrowLeft, AlertCircle, CheckCircle, Clock, Copy, ExternalLink, Eye } from 'lucide-react';
+import { ArrowLeft, AlertCircle, CheckCircle, Clock, Copy, ExternalLink, Eye, Weight } from 'lucide-react';
 
 const API_BASE = (process.env.NEXT_PUBLIC_API_BASE_URL || '').replace(/\/$/, '');
 
@@ -102,12 +102,15 @@ function buildRowsFromHintedKeys(resultDict: Record<string, any>): Row[] {
   for (const [k, v] of Object.entries(resultDict || {})) {
     const key = String(k || "").trim();
 
-    // ignore non-table keys
+    // Ignore non-table keys
     const low = key.toLowerCase();
     if (low.includes("ambienti") || low.includes("norms age band")) continue;
 
+    // Remove "MULTI" from the key to ensure it is cleaned
+    const cleanedKey = key.replace(/ MULTI$/, "").trim();
+
     // "<TEST> <COL>" where COL is last word
-    const m = key.match(/^(.*)\s+(PG|PC|CUTOFF|STAT|ESITO)$/i);
+    const m = cleanedKey.match(/^(.*)\s+(PG|PC|CUTOFF|STAT|ESITO)$/i);
     if (!m) continue;
 
     const test = m[1].trim();
@@ -118,7 +121,7 @@ function buildRowsFromHintedKeys(resultDict: Record<string, any>): Row[] {
     map.set(test, row);
   }
 
-  // fill missing columns with —
+  // Fill missing columns with "—"
   return Array.from(map.values()).map((r) => {
     const out: any = { test: (r as any).test };
     for (const c of COLS) {
@@ -128,6 +131,7 @@ function buildRowsFromHintedKeys(resultDict: Record<string, any>): Row[] {
     return out as Row;
   });
 }
+
 
 
 function StatusBadge({ submitted }: { submitted: boolean }) {
@@ -609,106 +613,182 @@ export default function SubmissionDetailPage() {
                           <>
                             <>
                               {Object.entries(resultsObj).map(([formCode, resultDict]) => {
-                                const rows = buildRowsFromHintedKeys(resultDict || {});
-                                const env = (resultDict as any)?.["Ambienti con difficoltà"] ?? "—";
-                                const band = (resultDict as any)?.["Norms age band"] ?? "—";
+  const rows = buildRowsFromHintedKeys(resultDict || {});
 
-                                return (
-                                  <React.Fragment key={`${link.link_id}-${formCode}`}>
-                                    {/* Questionnaire header */}
-                                    <tr>
-                                      <td
-                                        colSpan={6}
-                                        style={{
-                                          border: "1px solid rgba(255, 255, 255, 0.2)",
-                                          padding: "12px 16px",
-                                          fontWeight: 700,
-                                          fontSize: "15px",
-                                          backgroundColor: "#0a0a0a",
-                                        }}
-                                      >
-                                        {formCode}
-                                        {isOther && (
-                                          <span style={{ marginLeft: "12px", color: "#fbbf24", fontWeight: 600 }}>
-                                            — {reporterName}
-                                          </span>
-                                        )}
-                                      </td>
-                                    </tr>
+  // Step 1: Find all MULTI or TEXT keys dynamically
+  const multiOrTextTests = Object.entries(resultDict || {}).filter(([key, value]) => {
+    return key.toLowerCase().endsWith("multi") || key.toLowerCase().endsWith("text");
+  });
 
-                                    {/* Data rows */}
-                                    {rows.length === 0 ? (
-                                      <tr>
-                                        <td
-                                          colSpan={6}
-                                          style={{
-                                            border: "1px solid rgba(255, 255, 255, 0.2)",
-                                            padding: "24px 16px",
-                                            textAlign: "center",
-                                            color: "rgba(255, 255, 255, 0.6)",
-                                            fontStyle: "italic",
-                                          }}
-                                        >
-                                          No table rows found for this questionnaire.
-                                        </td>
-                                      </tr>
-                                    ) : (
-                                      rows.map((r) => (
-                                        <tr key={`${link.link_id}-${formCode}-${r.test}`}>
-                                          <td
-                                            style={{
-                                              border: "1px solid rgba(255, 255, 255, 0.2)",
-                                              padding: "10px 16px",
-                                              color: "rgba(255, 255, 255, 0.85)",
-                                              fontStyle: "italic",
-                                            }}
-                                          >
-                                            {r.test}
-                                          </td>
+  // Step 2: Prepare dynamic rows for MULTI and TEXT tests
+  const multiTextRows = multiOrTextTests.map(([key, value]) => {
+    // Extract the test name by removing the "MULTI" or "TEXT" suffix
+    const testName = key.replace(/\s+(MULTI|TEXT)$/i, "");
+    return {
+      test: testName,
+      value: value || "—", // Use "—" if value is undefined or null
+    };
+  });
 
-                                          <td style={{ border: "1px solid rgba(255,255,255,0.2)", padding: "10px 16px", textAlign: "center", fontWeight: 600 }}>
-                                            {String(r.PG)}
-                                          </td>
+  // Step 3: Extract value for "Ambienti con difficoltà"
+  const envKey = Object.keys(resultDict || {}).find((key) =>
+    key.toLowerCase().includes("ambienti con difficoltà")
+  );
+  const env = envKey ? resultDict[envKey] : "—";
+  const band = resultDict["Norms age band"] ?? "—";
 
-                                          <td style={{ border: "1px solid rgba(255,255,255,0.2)", padding: "10px 16px", textAlign: "center", fontWeight: 600 }}>
-                                            {String(r.PC)}
-                                          </td>
+  return (
+    <React.Fragment key={`${link.link_id}-${formCode}`}>
+      {/* Questionnaire header */}
+      <tr>
+        <td
+          colSpan={6}
+          style={{
+            border: "1px solid rgba(255, 255, 255, 0.2)",
+            padding: "12px 16px",
+            fontWeight: 800,
+            color: "#B8A021",
+            fontSize: "15px",
+            backgroundColor: "#0a0a0a",
+          }}
+        >
+          {formCode}
+          {isOther && (
+            <span style={{ marginLeft: "12px", color: "#fbbf24", fontWeight: 600 }}>
+              — {reporterName}
+            </span>
+          )}
+        </td>
+      </tr>
 
-                                          <td style={{ border: "1px solid rgba(255,255,255,0.2)", padding: "10px 16px", textAlign: "center", fontWeight: 600 }}>
-                                            {String(r.CUTOFF)}
-                                          </td>
+      {/* Data rows */}
+      {rows.length === 0 ? (
+        <tr>
+          <td
+            colSpan={6}
+            style={{
+              border: "1px solid rgba(255, 255, 255, 0.2)",
+              padding: "24px 16px",
+              textAlign: "center",
+              color: "rgba(255, 255, 255, 0.6)",
+              fontStyle: "italic",
+            }}
+          >
+            No table rows found for this questionnaire.
+          </td>
+        </tr>
+      ) : (
+        rows.map((r) => (
+          <tr key={`${link.link_id}-${formCode}-${r.test}`}>
+            <td
+              style={{
+                border: "1px solid rgba(255, 255, 255, 0.2)",
+                padding: "10px 16px",
+                color: "rgba(255, 255, 255, 0.85)",
+                fontStyle: "italic",
+              }}
+            >
+              {r.test}
+            </td>
+            <td style={{ border: "1px solid rgba(255,255,255,0.2)", padding: "10px 16px", textAlign: "center", fontWeight: 600 }}>
+              {String(r.PG)}
+            </td>
+            <td style={{ border: "1px solid rgba(255,255,255,0.2)", padding: "10px 16px", textAlign: "center", fontWeight: 600 }}>
+              {String(r.PC)}
+            </td>
+            <td style={{ border: "1px solid rgba(255,255,255,0.2)", padding: "10px 16px", textAlign: "center", fontWeight: 600 }}>
+              {String(r.CUTOFF)}
+            </td>
+            <td style={{ border: "1px solid rgba(255,255,255,0.2)", padding: "10px 16px", textAlign: "center", fontWeight: 600 }}>
+              {String(r.STAT)}
+            </td>
+            <td style={{ border: "1px solid rgba(255,255,255,0.2)", padding: "10px 16px", textAlign: "center", fontWeight: 600 }}>
+              {String(r.ESITO)}
+            </td>
+          </tr>
+        ))
+      )}
 
-                                          <td style={{ border: "1px solid rgba(255,255,255,0.2)", padding: "10px 16px", textAlign: "center", fontWeight: 600 }}>
-                                            {String(r.STAT)}
-                                          </td>
+     {/* Optional footer row for MULTI and TEXT */}
+{multiTextRows.length > 0 && (
+  <tr>
+    <td
+      colSpan={6}
+      style={{
+        border: "1px solid rgba(255, 255, 255, 0.2)",
+        padding: "10px 16px",
+        color: "rgba(255, 255, 255, 0.85)",
+        fontStyle: "italic",
+        backgroundColor: "#151515",
+      }}
+    >
+      <table
+        style={{
+          width: '100%',
+          borderCollapse: 'collapse',
+          color: 'rgba(255, 255, 255, 0.85)',
+          marginTop: '10px',
+        }}
+      >
+        <thead>
+          <tr>
+            <th
+              style={{
+                border: "1px solid rgba(255, 255, 255, 0.2)",
+                padding: "10px 16px",
+                textAlign: "center",
+                fontWeight: 600,
+              }}
+            >
+              Test Name
+            </th>
+            <th
+              style={{
+                border: "1px solid rgba(255, 255, 255, 0.2)",
+                padding: "10px 16px",
+                textAlign: "center",
+                fontWeight: 600,
+              }}
+            >
+              Value
+            </th>
+          </tr>
+        </thead>
+        <tbody>
+          {multiTextRows.map((row, index) => (
+            <tr key={index}>
+              <td
+                style={{
+                  border: "1px solid rgba(255, 255, 255, 0.2)",
+                  padding: "10px 16px",
+                  textAlign: "center",
+                }}
+              >
+                {row.test}
+              </td>
+              <td
+                style={{
+                  border: "1px solid rgba(255, 255, 255, 0.2)",
+                  padding: "10px 16px",
+                  textAlign: "center",
+                }}
+              >
+                {row.value}
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </td>
+  </tr>
+)}
 
-                                          <td style={{ border: "1px solid rgba(255,255,255,0.2)", padding: "10px 16px", textAlign: "center", fontWeight: 600 }}>
-                                            {String(r.ESITO)}
-                                          </td>
-                                        </tr>
-                                      ))
-                                    )}
+    </React.Fragment>
+  );
+})}
 
-                                    {/* Optional footer row */}
-                                    <tr>
-                                      <td
-                                        colSpan={6}
-                                        style={{
-                                          border: "1px solid rgba(255, 255, 255, 0.2)",
-                                          padding: "10px 16px",
-                                          backgroundColor: "#151515",
-                                          color: "rgba(255, 255, 255, 0.85)",
-                                        }}
-                                      >
-                                        <span style={{ fontWeight: 600 }}>Ambienti con difficoltà:</span> {String(env)}
-                                        <span style={{ marginLeft: 14, opacity: 0.8 }}>
-                                          (Norms age band: {String(band)})
-                                        </span>
-                                      </td>
-                                    </tr>
-                                  </React.Fragment>
-                                );
-                              })}
+
+
                             </>
 
 
