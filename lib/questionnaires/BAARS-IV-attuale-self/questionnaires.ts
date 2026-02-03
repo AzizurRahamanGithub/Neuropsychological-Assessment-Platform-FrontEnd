@@ -16,19 +16,19 @@ const OPTIONS_1_4 = [
 
 const QUESTIONS_1_27: string[] = [
     "Non prestavo adeguata attenzione ai dettagli o commettevo errori di distrazione",
-    "Avevo difficoltà a mantenere l’attenzione sui compiti o in attività di svago",
+    "Ho difficoltà a mantenere l’attenzione sui compiti o in attività di svago",
     "Non ascoltavo quando gli altri mi parlavano",
     "Non seguivo le istruzioni e non portavo a termine i compiti o i miei doveri",
-    "Avevo difficoltà ad organizzare gli impegni e le attività da svolgere",
+    "Ho difficoltà ad organizzare gli impegni e le attività da svolgere",
     "Evitavo, provavo avversione o ero riluttante ad impegnarmi in attività che richiedevano uno sforzo mentale sostenuto",
     "Perdevo le cose che mi servivano per le incombenze o le attività da fare",
     "Venivo distratto/a facilmente da stimoli estranei o da pensieri irrilevanti",
-    "Ero sbadato/a nelle attività quotidiane",
+    "Sono sbadato/a nelle attività quotidiane",
 
     "Muovevo di continuo mani e piedi o mi agitavo quando ero seduto/a",
     "Mi alzavo dalla sedia quando ero in aula o in altre situazioni in cui avrei dovuto stare seduto/a",
     "Mi spostavo continuamente da un posto all’altro o mi sentivo inquieto/a, come se fossi in trappola",
-    "Avevo difficoltà ad intraprendere attività di svago in modo tranquillo (mi sentivo a disagio, inappropriato/a o rumoroso/a)",
+    "Ho difficoltà ad intraprendere attività di svago in modo tranquillo (mi sentivo a disagio, inappropriato/a o rumoroso/a)",
     "Sono “in movimento” oppure agisco come se fossi “guidato/a da un motore” (o mi sento come se dovessi essere sempre occupato/a o impegnato/a in qualcosa",
 
     "Parlavo eccessivamente in situazioni sociali",
@@ -37,14 +37,14 @@ const QUESTIONS_1_27: string[] = [
     "Interrompevo o mi inserivo nelle conversazioni o attività altrui senza permesso, oppure facevo le cose al posto degli altri",
 
     "Tendevo a sognare ad occhi aperti quando avrei dovuto concentrarmi o lavorare",
-    "Avevo difficoltà a stare attento/a o sveglio/a in situazioni noiose",
+    "Ho difficoltà a stare attento/a o sveglio/a in situazioni noiose",
     "Mi confondevo facilmente",
-    "Mi annoiavo subito",
-    "Mi sentivo strano/a o con la testa fra le nuvole",
-    "Ero pigro/a o mi stancavo più degli altri",
-    "Ero poco attivo/a e avevo meno energia rispetto agli altri",
+    "Subito mi annoio",
+    "Mi sento strano/a o sulle nuvole",
+    "Sono pigro/a, mi stanco di più rispetto agli altri",
+    "Sono poco attivo/a, ho meno energia rispetto agli altri",
     "Mi muovevo lentamente",
-    "Avevo la sensazione di non riuscire ad elaborare le informazioni velocemente come gli altri"
+    "Mi sembra di non riuscire ad elaborare le informazioni velocemente come gli altri"
 ];
 
 const questions: Question[] = QUESTIONS_1_27.map(
