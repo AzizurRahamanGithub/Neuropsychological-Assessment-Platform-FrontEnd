@@ -33,21 +33,25 @@ type LoginResponse = {
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://10.0.30.73:8000/api/v1';
 
 const formatError = (data: any) => {
-  if (!data) return 'Login failed';
-  if (typeof data === 'string') return data;
+  if (!data) return "Login failed";
+  if (typeof data === "string") return data;
+
   if (data.detail) return data.detail;
   if (data.message) return data.message;
+  if (data.non_field_errors?.length) return data.non_field_errors[0];
 
-  // DRF field errors: {field: ["msg"]}
   const keys = Object.keys(data);
   if (keys.length) {
     const k = keys[0];
     const v = data[k];
     if (Array.isArray(v) && v.length) return `${k}: ${v[0]}`;
-    if (typeof v === 'string') return `${k}: ${v}`;
+    if (typeof v === "string") return `${k}: ${v}`;
+    console.log(k, "and", v);
   }
-  return 'Login failed';
+  console.log(keys.length)
+  return "Login failed";
 };
+
 
 
 

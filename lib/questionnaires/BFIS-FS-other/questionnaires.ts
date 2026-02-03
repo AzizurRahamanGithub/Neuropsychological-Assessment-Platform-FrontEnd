@@ -84,7 +84,7 @@ export function computeBFISFSOther(answers: Record<string, any>) {
     validCount === 0 ? "0%" : ((compromisedCount / validCount) * 100).toFixed(1) + "%";
 
   return {
-    "Punteggio medio di compromissione (other)": meanImpairment,
-    "Percentuale di domini compromessi (other)": compromisedPercentage,
+    "Punteggio medio di compromissione": meanImpairment,
+    "Percentuale di domini compromessi": compromisedPercentage,
   };
 }
