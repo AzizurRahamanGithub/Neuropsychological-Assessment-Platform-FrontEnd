@@ -3,6 +3,7 @@ import type { QuestionnaireDef } from "./types";
 import { BAARS_IV_ATTUALE_SELF, computeBAARSIVSelf } from "./BAARS-IV-attuale-self/questionnaires";
 import { BAARS_IV_ATTUALE_OTHER, computeBAARSIVOther } from "./BAARS-IV-attuale-other/questionnaires";
 import { BFIS_FS_OTHER, computeBFISFSOther } from "./BFIS-FS-other/questionnaires";
+import { ADHD_RS5_DOCENTE_OTHER, computeADHDRS5DocenteOther } from "./ADHD-RS5-docente-other/questionnaires";
 
 import {
   BAARS_IV_INFANZIA_SELF,
@@ -40,5 +41,9 @@ export const QUESTIONNAIRE_REGISTRY: Record<string, QuestionnaireModule> = {
   [BAARS_IV_INFANZIA_SELF.formCode]: {
     def: BAARS_IV_INFANZIA_SELF,
     compute: (a, ctx) => computeBAARSIVChildhoodSelf(a, ctx as BAARSChildCtx),
+  },
+  [ADHD_RS5_DOCENTE_OTHER.formCode]: {
+    def: ADHD_RS5_DOCENTE_OTHER,
+    compute: (a, ctx) => computeADHDRS5DocenteOther(a),
   },
 };

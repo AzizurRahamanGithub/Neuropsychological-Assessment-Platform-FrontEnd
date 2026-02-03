@@ -6,10 +6,10 @@ import { scoreFromLabel, qKey } from "../utils";
 // ===============================
 
 const OPTIONS_1_4 = [
-  { label: "Mai o raramente", value: 0 },
-  { label: "Talvolta", value: 1 },
-  { label: "Spesso", value: 2 },
-  { label: "Molto Spesso", value: 3 },
+  { label: "Mai o raramente", value: 1 },
+  { label: "Talvolta", value: 2 },
+  { label: "Spesso", value: 3 },
+  { label: "Molto Spesso", value: 4 },
 ] as const;
 
 const QUESTIONS_1_18: string[] = [
@@ -48,10 +48,10 @@ const questions: Question[] = QUESTIONS_1_18.map(
 
 // Part 2 questions (19-24) - Impairment ratings
 const IMPAIRMENT_OPTIONS = [
-  { label: "Nessun problema", value: 0 },
-  { label: "Problema lieve", value: 1 },
-  { label: "Problema moderato", value: 2 },
-  { label: "Problema grave", value: 3 },
+  { label: "Nessun problema", value: 1 },
+  { label: "Problema lieve", value: 2},
+  { label: "Problema moderato", value: 3 },
+  { label: "Problema grave", value: 4 },
 ] as const;
 
 const IMPAIRMENT_QUESTIONS = [
@@ -74,11 +74,11 @@ IMPAIRMENT_QUESTIONS.forEach((text, i) => {
   });
 });
 
-export const ADHD_RS5_DOCENTE: QuestionnaireDef = {
-  code: "ADHD_RS5_DOCENTE",
-  formCode: "ADHD_RS5_DOCENTE",
+export const ADHD_RS5_DOCENTE_OTHER: QuestionnaireDef = {
+  code: "ADHD_RS5_DOCENTE_OTHER",
+  formCode: "ADHD_RS5_DOCENTE_OTHER",
   type: "OTHER",
-  name: "ADHD_RS5_DOCENTE",
+  name: "ADHD_RS5_DOCENTE_OTHER",
   instruction:
     "Si prega di selezionare la risposta che descrive meglio il comportamento dello studente negli ultimi 6 mesi (o dall'inizio dell'anno scolastico), ovvero con quale frequenza lo studente manifesta un determinato comportamento?",
   questions,
@@ -426,9 +426,9 @@ function classifyImpairment(
  * - "Mai o raramente__0"
  * - "0__0"
  * - { label: "Mai o raramente" }
- * - { value: 0 } / { id: 0 }
- * - 0
- */
+ * - { value: 1 } / { id: 0 }
+ *2- 0
+3*/
 function stripUiSuffix(v: unknown) {
   if (typeof v !== "string") return v;
   return v.split("__")[0].trim();
@@ -466,7 +466,7 @@ function toScore(ans: any): number {
 
 export type ComputeCtx = { patientGender?: "M" | "F" | null };
 
-export function computeADHDRS5Docente(
+export function computeADHDRS5DocenteOther(
   answers: Record<string, any>,
   ctx?: ComputeCtx,
 ) {
