@@ -5,7 +5,13 @@ import { useParams, useRouter } from "next/navigation";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Checkbox } from "@/components/ui/checkbox";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
@@ -30,16 +36,19 @@ interface QuestionnaireState {
 
 type UiQuestion = QuestionnaireDetail["questions"][number];
 type UiOption = UiQuestion["options"][number];
-type UiQuestionType = "single_choice" | "multiple_choice" | "text";
-
+type UiQuestionType =
+  | "single_choice"
+  | "multiple_choice"
+  | "text"
+  | "instruction";
 type RegistryOption =
   | string
   | number
   | {
-    label?: string;
-    value?: string | number;
-    id?: string | number;
-  };
+      label?: string;
+      value?: string | number;
+      id?: string | number;
+    };
 
 type RegistryQuestion = {
   key?: string; // defs use q1..
@@ -49,16 +58,22 @@ type RegistryQuestion = {
   options?: RegistryOption[];
 };
 
-const API_BASE = (process.env.NEXT_PUBLIC_API_BASE_URL || "").replace(/\/$/, "");
+const API_BASE = (process.env.NEXT_PUBLIC_API_BASE_URL || "").replace(
+  /\/$/,
+  "",
+);
 
 const getModuleByFormCode = (formCode: string) => {
   return (QUESTIONNAIRE_REGISTRY as any)?.[formCode] ?? null;
 };
 
-function normalizeQuestionType(t: unknown): UiQuestionType {
+function normalizeQuestionType(t: unknown): UiQuestionType | "instruction" {
   const s = String(t || "").toLowerCase();
-  if (s === "single" || s === "radio" || s === "single_choice") return "single_choice";
-  if (s === "multiple" || s === "checkbox" || s === "multiple_choice") return "multiple_choice";
+  if (s === "instruction") return "instruction";
+  if (s === "single" || s === "radio" || s === "single_choice")
+    return "single_choice";
+  if (s === "multiple" || s === "checkbox" || s === "multiple_choice")
+    return "multiple_choice";
   return "text";
 }
 
@@ -67,14 +82,17 @@ function stripUiSuffix(v: unknown) {
   return v.split("__")[0];
 }
 
-function buildQuestionnaireDetailsFromCodes(codes: string[]): QuestionnaireDetail[] {
+function buildQuestionnaireDetailsFromCodes(
+  codes: string[],
+): QuestionnaireDetail[] {
   const list: QuestionnaireDetail[] = [];
 
   for (const formCode of codes) {
     const mod: any = getModuleByFormCode(formCode);
     if (!mod?.def) continue;
 
-    const questionsFromRegistry = (mod.def.questions || []) as RegistryQuestion[];
+    const questionsFromRegistry = (mod.def.questions ||
+      []) as RegistryQuestion[];
 
     const uiQuestions: UiQuestion[] = questionsFromRegistry.map((q, idx) => {
       const qType = normalizeQuestionType(q.type);
@@ -83,18 +101,19 @@ function buildQuestionnaireDetailsFromCodes(codes: string[]): QuestionnaireDetai
         qType === "text"
           ? []
           : ((q.options || []) as RegistryOption[]).map((opt, oidx) => {
-            const optionText = String((opt as any)?.label ?? opt);
-            const rawVal = (opt as any)?.value ?? (opt as any)?.id ?? optionText ?? oidx;
+              const optionText = String((opt as any)?.label ?? opt);
+              const rawVal =
+                (opt as any)?.value ?? (opt as any)?.id ?? optionText ?? oidx;
 
-            // ✅ unique per option (fix radio selecting all)
-            const optionValue = `${String(rawVal)}__${oidx}`;
+              // ✅ unique per option (fix radio selecting all)
+              const optionValue = `${String(rawVal)}__${oidx}`;
 
-            return {
-              id: oidx + 1,
-              optionText,
-              optionValue,
-            } as UiOption;
-          });
+              return {
+                id: oidx + 1,
+                optionText,
+                optionValue,
+              } as UiOption;
+            });
 
       return {
         id: idx + 1,
@@ -148,7 +167,9 @@ export default function QuestionnairePage() {
   const router = useRouter();
   const token = typeof params?.token === "string" ? params.token : "";
 
-  const [questionnaires, setQuestionnaires] = useState<QuestionnaireDetail[]>([]);
+  const [questionnaires, setQuestionnaires] = useState<QuestionnaireDetail[]>(
+    [],
+  );
   const [patientAge, setPatientAge] = useState<number | null>(null);
 
   const [state, setState] = useState<QuestionnaireState>({
@@ -163,7 +184,9 @@ export default function QuestionnairePage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   // ✅ NEW: link type + submitted by selection (ONLY for OTHER)
-  const [linkType, setLinkType] = useState<"all_self" | "single_other" | "">("");
+  const [linkType, setLinkType] = useState<"all_self" | "single_other" | "">(
+    "",
+  );
   const [submittedBy, setSubmittedBy] = useState<string>(""); // Madre/Padre/.../Altro
   const [submittedByOther, setSubmittedByOther] = useState<string>(""); // if Altro
 
@@ -182,7 +205,8 @@ export default function QuestionnairePage() {
         const res = await fetch(url, { method: "GET", cache: "no-store" });
         const data = await safeJson(res);
 
-        if (!res.ok) throw new Error(`[${res.status}] ${extractErrorMessage(data)}`);
+        if (!res.ok)
+          throw new Error(`[${res.status}] ${extractErrorMessage(data)}`);
 
         const payload = extractPayload(data);
 
@@ -207,13 +231,20 @@ export default function QuestionnairePage() {
         setLinkType(lt);
 
         const codes: string[] =
-          payload?.questionnaires || payload?.codes || payload?.assigned_questionnaires || [];
+          payload?.questionnaires ||
+          payload?.codes ||
+          payload?.assigned_questionnaires ||
+          [];
 
         if (payload?.is_submitted) throw new Error("Already submitted");
-        if (!Array.isArray(codes) || codes.length === 0) throw new Error("No questionnaires assigned for this link.");
+        if (!Array.isArray(codes) || codes.length === 0)
+          throw new Error("No questionnaires assigned for this link.");
 
         const qList = buildQuestionnaireDetailsFromCodes(codes);
-        if (!qList.length) throw new Error("Assigned questionnaire codes not found in registry (formCode mismatch).");
+        if (!qList.length)
+          throw new Error(
+            "Assigned questionnaire codes not found in registry (formCode mismatch).",
+          );
 
         setQuestionnaires(qList);
 
@@ -222,7 +253,7 @@ export default function QuestionnairePage() {
           try {
             const parsed = JSON.parse(savedState);
             setState(parsed);
-          } catch { }
+          } catch {}
         }
       } catch (e: any) {
         setError(e?.message || "Failed to load questionnaire");
@@ -245,7 +276,8 @@ export default function QuestionnairePage() {
   });
 
   const currentQuestionnaire = questionnaires[state.currentQuestionnaireIndex];
-  const isLastQuestionnaire = state.currentQuestionnaireIndex === questionnaires.length - 1;
+  const isLastQuestionnaire =
+    state.currentQuestionnaireIndex === questionnaires.length - 1;
   const progressPercentage = questionnaires.length
     ? ((state.currentQuestionnaireIndex + 1) / questionnaires.length) * 100
     : 0;
@@ -254,7 +286,10 @@ export default function QuestionnairePage() {
     const cq = questionnaires[state.currentQuestionnaireIndex];
     if (!cq) return true;
 
-    const mandatoryQuestions = cq.questions.filter((q: UiQuestion) => q.isMandatory);
+    const mandatoryQuestions = cq.questions.filter(
+      (q: UiQuestion) => q.isMandatory && q.questionType !== "instruction",
+    );
+
     const unanswered = mandatoryQuestions
       .filter((q: UiQuestion) => !state.responses[cq.id]?.[q.id])
       .map((q: UiQuestion) => q.id);
@@ -263,7 +298,10 @@ export default function QuestionnairePage() {
     return unanswered.length === 0;
   }, [questionnaires, state]);
 
-  const handleQuestionResponse = (questionId: number, value: string | number | string[]) => {
+  const handleQuestionResponse = (
+    questionId: number,
+    value: string | number | string[],
+  ) => {
     const cq = questionnaires[state.currentQuestionnaireIndex];
     if (!cq) return;
 
@@ -284,14 +322,20 @@ export default function QuestionnairePage() {
     if (!validateCurrentQuestionnaire()) return;
 
     if (state.currentQuestionnaireIndex < questionnaires.length - 1) {
-      setState((prev) => ({ ...prev, currentQuestionnaireIndex: prev.currentQuestionnaireIndex + 1 }));
+      setState((prev) => ({
+        ...prev,
+        currentQuestionnaireIndex: prev.currentQuestionnaireIndex + 1,
+      }));
       window.scrollTo(0, 0);
     }
   };
 
   const handlePrevious = () => {
     if (state.currentQuestionnaireIndex > 0) {
-      setState((prev) => ({ ...prev, currentQuestionnaireIndex: prev.currentQuestionnaireIndex - 1 }));
+      setState((prev) => ({
+        ...prev,
+        currentQuestionnaireIndex: prev.currentQuestionnaireIndex - 1,
+      }));
       window.scrollTo(0, 0);
     }
   };
@@ -312,7 +356,9 @@ export default function QuestionnairePage() {
     // ✅ enforce "Submitted by" for OTHER links
     if (linkType === "single_other") {
       if (!submittedBy) {
-        setError("Please select who is submitting this questionnaire (Submitted by).");
+        setError(
+          "Please select who is submitting this questionnaire (Submitted by).",
+        );
         return;
       }
       if (submittedBy === "Altro" && !submittedByOther.trim()) {
@@ -332,10 +378,12 @@ export default function QuestionnairePage() {
 
       for (const qn of questionnaires) {
         const formCode = (qn as any).formCode as string | undefined;
-        if (!formCode) throw new Error("Missing formCode in questionnaire list");
+        if (!formCode)
+          throw new Error("Missing formCode in questionnaire list");
 
         const mod: any = (QUESTIONNAIRE_REGISTRY as any)?.[formCode];
-        if (!mod?.compute) throw new Error(`Compute not found for formCode="${formCode}"`);
+        if (!mod?.compute)
+          throw new Error(`Compute not found for formCode="${formCode}"`);
 
         const uiResponsesForThis = state.responses[qn.id] || {};
 
@@ -344,17 +392,24 @@ export default function QuestionnairePage() {
           const key = (q as any).questionKey as string; // "q1"
           const raw = (uiResponsesForThis as any)?.[q.id];
 
-          const strip = (v: any) => (typeof v === "string" ? v.split("__")[0] : v);
+          const strip = (v: any) =>
+            typeof v === "string" ? v.split("__")[0] : v;
 
           if (Array.isArray(raw)) answersForCompute[key] = raw.map(strip);
           else answersForCompute[key] = strip(raw);
         }
 
-        console.log("✅ patientAge state:", patientAge, "type:", typeof patientAge);
+        console.log(
+          "✅ patientAge state:",
+          patientAge,
+          "type:",
+          typeof patientAge,
+        );
         console.log("✅ answersForCompute:", answersForCompute);
 
-
-        const out = mod.compute(answersForCompute, { patientAge: patientAge ?? undefined });
+        const out = mod.compute(answersForCompute, {
+          patientAge: patientAge ?? undefined,
+        });
 
         computedResults[formCode] = out;
       }
@@ -378,8 +433,10 @@ export default function QuestionnairePage() {
       console.log("✅ SUBMIT URL:", url);
       console.log("✅ SUBMIT token:", token);
       console.log("✅ SUBMIT payload object:", payload);
-      console.log("✅ SUBMIT payload JSON:\n", JSON.stringify(payload, null, 2));
-
+      console.log(
+        "✅ SUBMIT payload JSON:\n",
+        JSON.stringify(payload, null, 2),
+      );
 
       const res = await fetch(url, {
         method: "POST",
@@ -437,7 +494,9 @@ export default function QuestionnairePage() {
           <CardContent>
             <Alert variant="destructive">
               <AlertCircle className="h-4 w-4" />
-              <AlertDescription>{error || "This link is invalid."}</AlertDescription>
+              <AlertDescription>
+                {error || "This link is invalid."}
+              </AlertDescription>
             </Alert>
 
             <div className="mt-3 text-xs text-gray-600 break-all">
@@ -456,10 +515,15 @@ export default function QuestionnairePage() {
         <div className="mb-6">
           <div className="flex items-center justify-between mb-4">
             <h1 className="text-2xl font-bold text-gray-900">
-              Questionnaire {state.currentQuestionnaireIndex + 1} of {questionnaires.length}
+              Questionnaire {state.currentQuestionnaireIndex + 1} of{" "}
+              {questionnaires.length}
             </h1>
 
-            {saveError && <div className="text-xs text-red-600 bg-red-50 px-3 py-1 rounded">Save error</div>}
+            {saveError && (
+              <div className="text-xs text-red-600 bg-red-50 px-3 py-1 rounded">
+                Save error
+              </div>
+            )}
             {!saveError && lastSavedAt && (
               <div className="text-xs text-green-600 bg-green-50 px-3 py-1 rounded flex items-center gap-1">
                 <Check size={12} />
@@ -474,7 +538,9 @@ export default function QuestionnairePage() {
         {error && (
           <Alert variant="destructive" className="mb-6">
             <AlertCircle className="h-4 w-4" />
-            <AlertDescription style={{ whiteSpace: "pre-wrap" }}>{error}</AlertDescription>
+            <AlertDescription style={{ whiteSpace: "pre-wrap" }}>
+              {error}
+            </AlertDescription>
           </Alert>
         )}
 
@@ -482,7 +548,9 @@ export default function QuestionnairePage() {
         {linkType === "single_other" && (
           <Card className="border-0 shadow-lg mb-6">
             <CardHeader>
-              <CardTitle className="text-lg">Chi sta compilando questo questionario?</CardTitle>
+              <CardTitle className="text-lg">
+                Chi sta compilando questo questionario?
+              </CardTitle>
               <CardDescription>
                 Seleziona chi sta rispondendo per conto del paziente. (Required)
               </CardDescription>
@@ -491,10 +559,23 @@ export default function QuestionnairePage() {
             <CardContent className="space-y-4">
               <RadioGroup value={submittedBy} onValueChange={setSubmittedBy}>
                 <div className="grid grid-cols-2 gap-3">
-                  {["Madre", "Padre", "Fratello/Sorella", "Coniuge/Partner", "Amico/a", "Altro"].map((opt) => (
-                    <div key={opt} className="flex items-center gap-3 rounded border p-3">
+                  {[
+                    "Madre",
+                    "Padre",
+                    "Fratello/Sorella",
+                    "Coniuge/Partner",
+                    "Amico/a",
+                    "Altro",
+                  ].map((opt) => (
+                    <div
+                      key={opt}
+                      className="flex items-center gap-3 rounded border p-3"
+                    >
                       <RadioGroupItem value={opt} id={`submittedby-${opt}`} />
-                      <Label htmlFor={`submittedby-${opt}`} className="cursor-pointer font-medium">
+                      <Label
+                        htmlFor={`submittedby-${opt}`}
+                        className="cursor-pointer font-medium"
+                      >
                         {opt}
                       </Label>
                     </div>
@@ -505,7 +586,8 @@ export default function QuestionnairePage() {
               {submittedBy === "Altro" && (
                 <div className="space-y-2">
                   <Label className="font-semibold">
-                    Specificare (Required) <span className="text-red-600">*</span>
+                    Specificare (Required){" "}
+                    <span className="text-red-600">*</span>
                   </Label>
                   <Input
                     placeholder="Es: Zio, Cugino, Caregiver..."
@@ -513,7 +595,9 @@ export default function QuestionnairePage() {
                     onChange={(e) => setSubmittedByOther(e.target.value)}
                   />
                   {!submittedByOther.trim() && (
-                    <p className="text-sm text-red-600">Questo campo è obbligatorio.</p>
+                    <p className="text-sm text-red-600">
+                      Questo campo è obbligatorio.
+                    </p>
                   )}
                 </div>
               )}
@@ -530,85 +614,143 @@ export default function QuestionnairePage() {
         <Card className="border-0 shadow-lg mb-6">
           <CardHeader>
             <CardTitle>{currentQuestionnaire.name}</CardTitle>
-            <CardDescription>{currentQuestionnaire.description}</CardDescription>
+            <CardDescription>
+              {currentQuestionnaire.description}
+            </CardDescription>
           </CardHeader>
 
           <CardContent className="space-y-8">
-            {currentQuestionnaire.questions.map((question: UiQuestion, index: number) => (
-              <div
-                key={question.id}
-                className={`pb-6 border-b last:border-b-0 ${unansweredQuestions.includes(question.id) ? "bg-red-50 p-4 rounded" : ""
-                  }`}
-              >
-                <Label className="block text-base font-semibold text-gray-900 mb-3">
-                  {index + 1}. {question.questionText}
-                  {question.isMandatory && <span className="text-red-600 ml-1">*</span>}
-                </Label>
-
-                {/* SINGLE */}
-                {question.questionType === "single_choice" && (
-                  <RadioGroup
-                    value={String(state.responses[currentQuestionnaire.id]?.[question.id] ?? "")}
-                    onValueChange={(value) => handleQuestionResponse(question.id, value)}
-                  >
-                    <div className="space-y-2">
-                      {question.options.map((option: UiOption) => (
-                        <div key={option.id} className="flex items-center gap-3">
-                          <RadioGroupItem value={String(option.optionValue)} id={`option-${question.id}-${option.id}`} />
-                          <Label htmlFor={`option-${question.id}-${option.id}`} className="font-normal cursor-pointer">
-                            {option.optionText}
-                          </Label>
-                        </div>
-                      ))}
+            {currentQuestionnaire.questions.map(
+              (question: UiQuestion, index: number) => {
+                // ✅ INSTRUCTION type - render as heading only
+                if (question.questionType === "instruction") {
+                  return (
+                    <div key={question.id} className="py-4">
+                      <h3 className="text-lg font-bold text-gray-800 border-l-4 border-blue-600 pl-4">
+                        {question.questionText}
+                      </h3>
                     </div>
-                  </RadioGroup>
-                )}
+                  );
+                }
 
-                {/* MULTIPLE */}
-                {question.questionType === "multiple_choice" && (
-                  <div className="space-y-2">
-                    {question.options.map((option: UiOption) => {
-                      const currentValues =
-                        (state.responses[currentQuestionnaire.id]?.[question.id] as string[]) || [];
-                      const val = String(option.optionValue);
-                      const checked = currentValues.includes(val);
+                return (
+                  <div
+                    key={question.id}
+                    className={`pb-6 border-b last:border-b-0 ${
+                      unansweredQuestions.includes(question.id)
+                        ? "bg-red-50 p-4 rounded"
+                        : ""
+                    }`}
+                  >
+                    <Label className="block text-base font-semibold text-gray-900 mb-3">
+                      {index + 1}. {question.questionText}
+                      {question.isMandatory && (
+                        <span className="text-red-600 ml-1">*</span>
+                      )}
+                    </Label>
 
-                      return (
-                        <div key={option.id} className="flex items-center gap-3">
-                          <Checkbox
-                            id={`option-${question.id}-${option.id}`}
-                            checked={checked}
-                            onCheckedChange={(c) => {
-                              const newValues = c
-                                ? Array.from(new Set([...currentValues, val]))
-                                : currentValues.filter((v) => v !== val);
-                              handleQuestionResponse(question.id, newValues);
-                            }}
-                          />
-                          <Label htmlFor={`option-${question.id}-${option.id}`} className="font-normal cursor-pointer">
-                            {option.optionText}
-                          </Label>
+                    {/* SINGLE */}
+                    {question.questionType === "single_choice" && (
+                      <RadioGroup
+                        value={String(
+                          state.responses[currentQuestionnaire.id]?.[
+                            question.id
+                          ] ?? "",
+                        )}
+                        onValueChange={(value) =>
+                          handleQuestionResponse(question.id, value)
+                        }
+                      >
+                        <div className="space-y-2">
+                          {question.options.map((option: UiOption) => (
+                            <div
+                              key={option.id}
+                              className="flex items-center gap-3"
+                            >
+                              <RadioGroupItem
+                                value={String(option.optionValue)}
+                                id={`option-${question.id}-${option.id}`}
+                              />
+                              <Label
+                                htmlFor={`option-${question.id}-${option.id}`}
+                                className="font-normal cursor-pointer"
+                              >
+                                {option.optionText}
+                              </Label>
+                            </div>
+                          ))}
                         </div>
-                      );
-                    })}
+                      </RadioGroup>
+                    )}
+
+                    {/* MULTIPLE */}
+                    {question.questionType === "multiple_choice" && (
+                      <div className="space-y-2">
+                        {question.options.map((option: UiOption) => {
+                          const currentValues =
+                            (state.responses[currentQuestionnaire.id]?.[
+                              question.id
+                            ] as string[]) || [];
+                          const val = String(option.optionValue);
+                          const checked = currentValues.includes(val);
+
+                          return (
+                            <div
+                              key={option.id}
+                              className="flex items-center gap-3"
+                            >
+                              <Checkbox
+                                id={`option-${question.id}-${option.id}`}
+                                checked={checked}
+                                onCheckedChange={(c) => {
+                                  const newValues = c
+                                    ? Array.from(
+                                        new Set([...currentValues, val]),
+                                      )
+                                    : currentValues.filter((v) => v !== val);
+                                  handleQuestionResponse(
+                                    question.id,
+                                    newValues,
+                                  );
+                                }}
+                              />
+                              <Label
+                                htmlFor={`option-${question.id}-${option.id}`}
+                                className="font-normal cursor-pointer"
+                              >
+                                {option.optionText}
+                              </Label>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+
+                    {/* TEXT */}
+                    {question.questionType === "text" && (
+                      <Input
+                        placeholder="Enter your answer..."
+                        value={String(
+                          state.responses[currentQuestionnaire.id]?.[
+                            question.id
+                          ] ?? "",
+                        )}
+                        onChange={(e) =>
+                          handleQuestionResponse(question.id, e.target.value)
+                        }
+                        className="mt-2"
+                      />
+                    )}
+
+                    {unansweredQuestions.includes(question.id) && (
+                      <p className="text-sm text-red-600 mt-2">
+                        Please answer this question.
+                      </p>
+                    )}
                   </div>
-                )}
-
-                {/* TEXT */}
-                {question.questionType === "text" && (
-                  <Input
-                    placeholder="Enter your answer..."
-                    value={String(state.responses[currentQuestionnaire.id]?.[question.id] ?? "")}
-                    onChange={(e) => handleQuestionResponse(question.id, e.target.value)}
-                    className="mt-2"
-                  />
-                )}
-
-                {unansweredQuestions.includes(question.id) && (
-                  <p className="text-sm text-red-600 mt-2">Please answer this question.</p>
-                )}
-              </div>
-            ))}
+                );
+              },
+            )}
           </CardContent>
         </Card>
 
@@ -633,7 +775,11 @@ export default function QuestionnairePage() {
               {isSubmitting ? "Submitting..." : "Submit"}
             </Button>
           ) : (
-            <Button onClick={handleNext} disabled={unansweredQuestions.length > 0} className="flex-1 gap-2">
+            <Button
+              onClick={handleNext}
+              disabled={unansweredQuestions.length > 0}
+              className="flex-1 gap-2"
+            >
               Next
               <ChevronRight size={20} />
             </Button>
@@ -642,7 +788,9 @@ export default function QuestionnairePage() {
 
         <div className="mt-6 text-center text-sm text-gray-600">
           {isSaving && "Saving..."}
-          {!isSaving && lastSavedAt && `Last saved: ${lastSavedAt.toLocaleTimeString("en-US")}`}
+          {!isSaving &&
+            lastSavedAt &&
+            `Last saved: ${lastSavedAt.toLocaleTimeString("en-US")}`}
         </div>
       </div>
     </main>
