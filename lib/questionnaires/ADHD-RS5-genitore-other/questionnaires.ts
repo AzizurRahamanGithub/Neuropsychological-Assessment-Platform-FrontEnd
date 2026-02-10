@@ -6,10 +6,10 @@ import { scoreFromLabel, qKey } from "../utils";
 // ===============================
 
 const OPTIONS_1_4 = [
-  { label: "Mai o raramente", value: 1 },
-  { label: "Talvolta", value: 2 },
-  { label: "Spesso", value: 3 },
-  { label: "Molto Spesso", value: 4 },
+  { label: "Mai o raramente", value: 0 },
+  { label: "Talvolta", value: 1 },
+  { label: "Spesso", value: 2 },
+  { label: "Molto Spesso", value: 3 },
 ] as const;
 
 const QUESTIONS_1_18: string[] = [
@@ -470,8 +470,25 @@ function toScore(ans: any): number {
 // COMPUTE (with gender-based norms)
 // ===============================
 
-export type ComputeCtx = { patientGender?: "M" | "F" | null };
+export type ComputeCtx = {
+  patientSex?: string | null; // <-- preferred (F/M, female/male, etc.)
+  patientGender?: string | null; // <-- keep for backward compat
+};
 
+function normalizeGender(input: unknown): GenderKey {
+  const s = String(input ?? "")
+    .trim()
+    .toLowerCase();
+
+  // common variants
+  if (s === "f" || s === "female" || s === "femmina" || s === "donna")
+    return "FEMALE";
+  if (s === "m" || s === "male" || s === "maschio" || s === "uomo")
+    return "MALE";
+
+  // fallback (same behavior as now)
+  return "MALE";
+}
 export function computeADHDRS5GenitoreOther(
   answers: Record<string, any>,
   ctx?: ComputeCtx,
@@ -506,8 +523,12 @@ export function computeADHDRS5GenitoreOther(
   };
 
   // Determine gender and select appropriate norms
-  const gender: GenderKey = ctx?.patientGender === "F" ? "FEMALE" : "MALE";
+  const gender: GenderKey = normalizeGender(
+    ctx?.patientSex ?? ctx?.patientGender,
+  );
+
   const norms = gender === "MALE" ? MALE_NORMS : FEMALE_NORMS;
+
   const impairmentNorms =
     gender === "MALE" ? MALE_IMPAIRMENT_NORMS : FEMALE_IMPAIRMENT_NORMS;
 

@@ -171,6 +171,8 @@ export default function QuestionnairePage() {
     [],
   );
   const [patientAge, setPatientAge] = useState<number | null>(null);
+  const [patientSex, setPatientSex] = useState<string | null>(null); // "female" | "male"
+  const [patientEducation, setPatientEducation] = useState<number | null>(null);
 
   const [state, setState] = useState<QuestionnaireState>({
     currentQuestionnaireIndex: 0,
@@ -209,6 +211,33 @@ export default function QuestionnairePage() {
           throw new Error(`[${res.status}] ${extractErrorMessage(data)}`);
 
         const payload = extractPayload(data);
+
+        const ps =
+          payload?.patient_sex ??
+          payload?.patientSex ??
+          payload?.patient?.sex ??
+          null;
+
+        setPatientSex(ps ? String(ps).toLowerCase() : null);
+
+        console.log("✅ patient_sex from GET:", ps);
+
+        // 1. Extract the raw value using the same fallback chain logic
+        const pe =
+          payload?.patient_education ??
+          payload?.patientEducation ??
+          payload?.patient?.education ??
+          null;
+
+        // 2. Convert to number if possible, or keep as raw value if it's a string
+        // Note: We use Number(pe) only if pe is truthy to avoid converting null to 0
+        const peNum = typeof pe === "number" ? pe : pe ? Number(pe) : null;
+
+        // 3. Set the state, ensuring it's a finite number; otherwise, default to null
+        // If you actually WANT the string "101", keep the Number.isFinite check
+        setPatientEducation(Number.isFinite(peNum) ? peNum : null);
+
+        console.log("✅ patient_Education from GET:", peNum);
 
         const pa =
           payload?.patient_age ??
@@ -409,8 +438,14 @@ export default function QuestionnairePage() {
 
         const out = mod.compute(answersForCompute, {
           patientAge: patientAge ?? undefined,
+          patientSex: patientSex ?? undefined,
+          patientEducation: patientEducation ?? undefined,
         });
-
+        console.log("✅ compute ctx:", {
+          patientAge,
+          patientSex,
+          patientEducation,
+        });
         computedResults[formCode] = out;
       }
 
@@ -566,6 +601,8 @@ export default function QuestionnairePage() {
                     "Coniuge/Partner",
                     "Amico/a",
                     "Altro",
+                    "Tutore",
+                    "Nonno/a",
                   ].map((opt) => (
                     <div
                       key={opt}

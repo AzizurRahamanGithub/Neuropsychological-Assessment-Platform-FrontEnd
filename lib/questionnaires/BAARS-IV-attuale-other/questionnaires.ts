@@ -8,18 +8,23 @@ export const BAARS_IV_ATTUALE_OTHER: QuestionnaireDef = {
   name: "BAARS_IV_ATTUALE_OTHER",
   instruction:
     "Selezioni gentilmente il tipo di relazione con la persona in valutazione, poi risponda alle domande (ultimi 6 mesi).",
-  // ✅ THIS is extra for OTHER (respondent selection at top)
-  respondents: ["Madre", "Padre", "Fratello/Sorella", "Coniuge/Partner", "Amicola", "Altro"],
+
+  respondents: [
+    "Madre",
+    "Padre",
+    "Fratello/Sorella",
+    "Coniuge/Partner",
+    "Amico/a",
+    "Altro",
+  ],
 
   questions: [
-    // Q1 - Q27 single_choice
     ...Array.from({ length: 27 }, (_, idx) => {
       const n = idx + 1;
 
-      // ✅ put your exact text here (copy from excel)
       const TEXTS: Record<number, string> = {
         1: "Non presta adeguata attenzione ai dettagli o commette errori di distrazione?",
-        2: "Ha difficoltà a mantenere l’attenzione sui compiti o in attività di svago?",
+        2: "Ha difficoltà a mantenere l'attenzione sui compiti o in attività di svago?",
         3: "Non ascolta quando gli altri gli/le parlano?",
         4: "Non segue le istruzioni e non porta a termine i compiti o i suoi doveri?",
         5: "Ha difficoltà ad organizzare gli impegni e le attività da svolgere?",
@@ -29,9 +34,9 @@ export const BAARS_IV_ATTUALE_OTHER: QuestionnaireDef = {
         9: "È sbadato/a nelle attività quotidiane?",
         10: "Muove di continuo mani e piedi e si agita quando è seduto/a?",
         11: "Si alza dalla sedia quando è in aula o in altre situazioni in cui dovrebbe stare seduto/a?",
-        12: "Si sposta continuamente da un posto all’altro, si sente inquieto/a oppure come se fosse in trappola?",
+        12: "Si sposta continuamente da un posto all'altro, si sente inquieto/a oppure come se fosse in trappola?",
         13: "Ha difficoltà a intraprendere attività di svago in modo tranquillo?",
-        14: "È “in movimento” oppure agisce come se fosse “guidato/a da un motore”?",
+        14: "È 'in movimento' oppure agisce come se fosse 'guidato/a da un motore'?",
         15: "Parla eccessivamente (in situazioni sociali)?",
         16: "Risponde impulsivamente prima che finiscano di formulare le domande, finisce le frasi degli altri oppure le anticipa?",
         17: "Ha difficoltà ad aspettare il suo turno?",
@@ -54,81 +59,172 @@ export const BAARS_IV_ATTUALE_OTHER: QuestionnaireDef = {
         type: "single_choice" as const,
         required: true,
         options: [
-          { label: "A) Mai o raramente " },
-          { label: "B) Qualche volta " },
-          { label: "C) Spesso " },
-          { label: "D) Molto spesso " },
+          { label: "A) Mai o raramente" },
+          { label: "B) Qualche volta" },
+          { label: "C) Spesso" },
+          { label: "D) Molto spesso" },
         ],
       };
     }),
 
-    // ✅ Q28 text
     {
       key: qKey(28),
       number: 28,
-      text: " Quanti anni aveva la persona in valutazione quando i sintomi hanno avuto inizio?",
+      text: "Quanti anni aveva la persona in valutazione quando i sintomi hanno avuto inizio?",
       type: "text",
       required: true,
     },
 
-    // ✅ Q29 multiple choice
     {
       key: qKey(29),
       number: 29,
-      text: " In quali ambienti i sintomi della persona in valutazione compromettono la prestazione? (Selezioni tutte le situazioni)",
+      text: "In quali ambienti i sintomi della persona in valutazione compromettono la prestazione? (Selezioni tutte le situazioni)",
       type: "multiple_choice",
       required: true,
       options: [
-        { label: "A) Scuola" },
-        { label: "B) Casa" },
-        { label: "C) Lavoro" },
-        { label: "D) Situazioni sociali" },
+        { label: "Scuola" },
+        { label: "Casa" },
+        { label: "Lavoro" },
+        { label: "Situazioni sociali" },
       ],
     },
   ],
 };
 
-export function computeBAARSIVOther(answers: Record<string, any>) {
+function stripUiSuffix(v: unknown) {
+  if (typeof v !== "string") return v;
+  return v.split("__")[0].trim();
+}
+
+function rawStringFromAnswer(ans: any): string {
+  if (ans == null) return "";
+  if (typeof ans === "string" || typeof ans === "number")
+    return String(stripUiSuffix(ans)).trim();
+  if (typeof ans === "object") {
+    const raw =
+      (ans as any).label ?? (ans as any).value ?? (ans as any).id ?? "";
+    return String(stripUiSuffix(raw)).trim();
+  }
+  return "";
+}
+
+function cleanLabel(s: string) {
+  let out = s.trim();
+  out = out.replace(/^[A-D]\)\s*/i, "");
+  out = out.replace(/^\d+\.\s*/, "");
+  out = out.replace(/\s+/g, " ").trim();
+  return out;
+}
+
+function labelFromAnswer(ans: any): string {
+  return cleanLabel(rawStringFromAnswer(ans));
+}
+
+function toScoreFromAnswer(ans: any): number {
+  if (ans == null) return 0;
+
+  if (typeof ans === "number" && Number.isFinite(ans)) {
+    if (ans >= 0 && ans <= 3) return ans + 1;
+    if (ans >= 1 && ans <= 4) return ans;
+    return 0;
+  }
+
+  if (typeof ans === "object") {
+    const v = (ans as any).value ?? (ans as any).id ?? null;
+    if (typeof v === "number" && Number.isFinite(v)) {
+      if (v >= 0 && v <= 3) return v + 1;
+      if (v >= 1 && v <= 4) return v;
+    }
+    if (typeof v === "string") {
+      const n = Number(stripUiSuffix(v));
+      if (!Number.isNaN(n) && Number.isFinite(n)) {
+        if (n >= 0 && n <= 3) return n + 1;
+        if (n >= 1 && n <= 4) return n;
+      }
+    }
+  }
+
+  const raw = rawStringFromAnswer(ans).toUpperCase();
+  if (raw.includes("A)")) return 1;
+  if (raw.includes("B)")) return 2;
+  if (raw.includes("C)")) return 3;
+  if (raw.includes("D)")) return 4;
+  if (raw === "A") return 1;
+  if (raw === "B") return 2;
+  if (raw === "C") return 3;
+  if (raw === "D") return 4;
+
+  const label = labelFromAnswer(ans);
+  if (!label) return 0;
+  const s = scoreFromLabel(label);
+  return Number.isFinite(s) ? s : 0;
+}
+
+function textToString(raw: any): string {
+  if (raw == null) return "";
+  if (typeof raw === "string" || typeof raw === "number") {
+    return String(stripUiSuffix(raw)).trim();
+  }
+  if (typeof raw === "object") {
+    const v = (raw as any).value ?? (raw as any).id ?? (raw as any).label ?? "";
+    return String(stripUiSuffix(v)).trim();
+  }
+  return "";
+}
+
+function multiToString(raw: any): string {
+  if (!Array.isArray(raw)) return "";
+  return raw
+    .map((x) => cleanLabel(rawStringFromAnswer(x)))
+    .filter(Boolean)
+    .join(", ");
+}
+
+const RDI_CUTOFF = {
+  disattenzione: "≥7.6",
+  iperattivita: "≥4.6",
+  impulsivita: "≥3.5",
+  sct: "≥8.4",
+  totale_adhd: "≥13.0",
+} as const;
+
+type AgeBandKey = "18-39" | "40-59" | "60-89";
+function pickAgeBand(age: number): AgeBandKey {
+  if (age >= 18 && age <= 39) return "18-39";
+  if (age >= 40 && age <= 59) return "40-59";
+  return "60-89";
+}
+
+export type ComputeCtx = {
+  patientAge?: number | null;
+  patientGender?: string | null;
+  selfResults?: Record<string, string> | null;
+};
+
+export function computeBAARSIVOther(
+  answers: Record<string, any>,
+  ctx?: ComputeCtx,
+) {
   const scores_1_9: number[] = [];
   const scores_10_14: number[] = [];
   const scores_15_18: number[] = [];
   const scores_19_27: number[] = [];
 
-  for (let i = 1; i <= 9; i++) {
-    const ans = answers[qKey(i)];
-    const label = typeof ans === "string" ? ans : ans?.label;
-    scores_1_9.push(scoreFromLabel(label));
-  }
+  for (let i = 1; i <= 9; i++)
+    scores_1_9.push(toScoreFromAnswer(answers[qKey(i)]));
+  for (let i = 10; i <= 14; i++)
+    scores_10_14.push(toScoreFromAnswer(answers[qKey(i)]));
+  for (let i = 15; i <= 18; i++)
+    scores_15_18.push(toScoreFromAnswer(answers[qKey(i)]));
+  for (let i = 19; i <= 27; i++)
+    scores_19_27.push(toScoreFromAnswer(answers[qKey(i)]));
 
-  for (let i = 10; i <= 14; i++) {
-    const ans = answers[qKey(i)];
-    const label = typeof ans === "string" ? ans : ans?.label;
-    scores_10_14.push(scoreFromLabel(label));
-  }
+  const etaInizioSintomi = textToString(answers[qKey(28)]);
+  const ambitiDiCompromissione = multiToString(answers[qKey(29)]);
 
-  for (let i = 15; i <= 18; i++) {
-    const ans = answers[qKey(i)];
-    const label = typeof ans === "string" ? ans : ans?.label;
-    scores_15_18.push(scoreFromLabel(label));
-  }
+  const reportBy = textToString(answers["report_by"]);
+  const reportByOther = textToString(answers["report_by_other"]);
 
-  for (let i = 19; i <= 27; i++) {
-    const ans = answers[qKey(i)];
-    const label = typeof ans === "string" ? ans : ans?.label;
-    scores_19_27.push(scoreFromLabel(label));
-  }
-
-  // ✅ Q28 string
-  const etaInizioRaw = answers[qKey(28)];
-  const etaInizioSintomi =
-    etaInizioRaw === undefined || etaInizioRaw === null ? "" : String(etaInizioRaw).trim();
-
-  // ✅ Q29 multiple -> string
-  const ambitiRaw = answers[qKey(29)];
-  const ambitiArray: string[] = Array.isArray(ambitiRaw) ? ambitiRaw.map(String) : [];
-  const ambitiDiCompromissione = ambitiArray.map((s) => s.trim()).filter(Boolean).join(", ");
-
-  // ✅ calculations
   const disattenzionePunteggio = scores_1_9.reduce((a, b) => a + b, 0);
   const disattenzioneNSintomi = scores_1_9.filter((s) => s >= 3).length;
 
@@ -141,22 +237,101 @@ export function computeBAARSIVOther(answers: Record<string, any>) {
   const sctPunteggio = scores_19_27.reduce((a, b) => a + b, 0);
   const sctNSintomi = scores_19_27.filter((s) => s >= 3).length;
 
-  // ✅ respondent info (top selection)
-  // You will save these from UI under these keys:
-  const reportBy = (answers["report_by"] ?? "").toString().trim();          // Madre/Padre/.../Altro
-  const reportByOther = (answers["report_by_other"] ?? "").toString().trim(); // if Altro
+  const totaleADHDPunteggio =
+    disattenzionePunteggio + iperattivitaPunteggio + impulsivitaPunteggio;
+
+  const totaleADHDNSintomi =
+    disattenzioneNSintomi + iperattivitaNSintomi + impulsivitaNSintomi;
+
+  const age = Number(ctx?.patientAge ?? 0);
+  const band = age > 0 ? pickAgeBand(age) : "";
+
+  const disattenzioneEsito = disattenzionePunteggio >= 7.6 ? "*" : "";
+  const iperattivitaEsito = iperattivitaPunteggio >= 4.6 ? "*" : "";
+  const impulsivitaEsito = impulsivitaPunteggio >= 3.5 ? "*" : "";
+  const sctEsito = sctPunteggio >= 8.4 ? "*" : "";
+  const totaleADHDEsito = totaleADHDPunteggio >= 13.0 ? "*" : "";
+
+  let disattenzioneSTAT = "—";
+  let iperattivitaSTAT = "—";
+  let impulsivitaSTAT = "—";
+  let sctSTAT = "—";
+  let totaleADHDSTAT = "—";
+  let disattenzioneRDIEsito = "";
+  let iperattivitaRDIEsito = "";
+  let impulsivitaRDIEsito = "";
+  let sctRDIEsito = "";
+  let totaleADHDRDIEsito = "";
+
+  if (ctx?.selfResults) {
+    const selfDisattenzione = Number(
+      ctx.selfResults["Disattenzione punteggio PG"] || 0,
+    );
+    const selfIperattivita = Number(
+      ctx.selfResults["Iperattività punteggio PG"] || 0,
+    );
+    const selfImpulsivita = Number(
+      ctx.selfResults["Impulsività punteggio PG"] || 0,
+    );
+    const selfSCT = Number(ctx.selfResults["SCT punteggio PG"] || 0);
+    const selfTotaleADHD = Number(
+      ctx.selfResults["Totale ADHD punteggio PG"] || 0,
+    );
+
+    const diffDisattenzione = Math.abs(
+      selfDisattenzione - disattenzionePunteggio,
+    );
+    const diffIperattivita = Math.abs(selfIperattivita - iperattivitaPunteggio);
+    const diffImpulsivita = Math.abs(selfImpulsivita - impulsivitaPunteggio);
+    const diffSCT = Math.abs(selfSCT - sctPunteggio);
+    const diffTotaleADHD = Math.abs(selfTotaleADHD - totaleADHDPunteggio);
+
+    disattenzioneSTAT = diffDisattenzione.toFixed(1);
+    iperattivitaSTAT = diffIperattivita.toFixed(1);
+    impulsivitaSTAT = diffImpulsivita.toFixed(1);
+    sctSTAT = diffSCT.toFixed(1);
+    totaleADHDSTAT = diffTotaleADHD.toFixed(1);
+
+    disattenzioneRDIEsito = diffDisattenzione >= 7.6 ? "*" : "";
+    iperattivitaRDIEsito = diffIperattivita >= 4.6 ? "*" : "";
+    impulsivitaRDIEsito = diffImpulsivita >= 3.5 ? "*" : "";
+    sctRDIEsito = diffSCT >= 8.4 ? "*" : "";
+    totaleADHDRDIEsito = diffTotaleADHD >= 13.0 ? "*" : "";
+  }
 
   return {
-    "Report by": reportByOther ? `${reportBy} - ${reportByOther}` : reportBy,
-    "Disattenzione punteggio": String(disattenzionePunteggio),
-    "Disattenzione n° sintomi": String(disattenzioneNSintomi),
-    "Iperattività punteggio": String(iperattivitaPunteggio),
-    "Iperattività n° sintomi": String(iperattivitaNSintomi),
-    "Impulsività punteggio": String(impulsivitaPunteggio),
-    "Impulsività n° sintomi": String(impulsivitaNSintomi),
-    "SCT punteggio": String(sctPunteggio),
-    "SCT n° sintomi": String(sctNSintomi),
-    "Età inizio sintomi": etaInizioSintomi,
-    "Ambiti di compromissione": ambitiDiCompromissione,
+    "Disattenzione punteggio PG": String(disattenzionePunteggio),
+    "Disattenzione punteggio CUTOFF": RDI_CUTOFF.disattenzione,
+    "Disattenzione punteggio STAT": disattenzioneSTAT,
+    "Disattenzione punteggio ESITO": disattenzioneRDIEsito,
+    "Disattenzione n° sintomi PG": String(disattenzioneNSintomi),
+
+    "Iperattività punteggio PG": String(iperattivitaPunteggio),
+    "Iperattività punteggio CUTOFF": RDI_CUTOFF.iperattivita,
+    "Iperattività punteggio STAT": iperattivitaSTAT,
+    "Iperattività punteggio ESITO": iperattivitaRDIEsito,
+    "Iperattività n° sintomi PG": String(iperattivitaNSintomi),
+
+    "Impulsività punteggio PG": String(impulsivitaPunteggio),
+    "Impulsività punteggio CUTOFF": RDI_CUTOFF.impulsivita,
+    "Impulsività punteggio STAT": impulsivitaSTAT,
+    "Impulsività punteggio ESITO": impulsivitaRDIEsito,
+    "Impulsività n° sintomi PG": String(impulsivitaNSintomi),
+
+    "SCT punteggio PG": String(sctPunteggio),
+    "SCT punteggio CUTOFF": RDI_CUTOFF.sct,
+    "SCT punteggio STAT": sctSTAT,
+    "SCT punteggio ESITO": sctRDIEsito,
+    "SCT n° sintomi PG": String(sctNSintomi),
+
+    "Totale ADHD punteggio PG": String(totaleADHDPunteggio),
+    "Totale ADHD punteggio CUTOFF": RDI_CUTOFF.totale_adhd,
+    "Totale ADHD punteggio STAT": totaleADHDSTAT,
+    "Totale ADHD punteggio ESITO": totaleADHDRDIEsito,
+    "Totale ADHD n° sintomi PG": String(totaleADHDNSintomi),
+
+    "Età inizio sintomi TEXT": etaInizioSintomi,
+    "Ambiti di compromissione MULTI": ambitiDiCompromissione,
+    "Age band used": band,
   };
 }

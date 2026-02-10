@@ -6,10 +6,10 @@ import { scoreFromLabel, qKey } from "../utils";
 // ===============================
 
 const OPTIONS_1_4 = [
-  { label: "Mai o raramente", value: 1 },
-  { label: "Talvolta", value: 2 },
-  { label: "Spesso", value: 3 },
-  { label: "Molto Spesso", value: 4 },
+  { label: "Mai o raramente", value: 0 },
+  { label: "Talvolta", value: 1 },
+  { label: "Spesso", value: 2 },
+  { label: "Molto Spesso", value: 3 },
 ] as const;
 
 const QUESTIONS_1_18: string[] = [
@@ -241,8 +241,7 @@ const FEMALE_NORMS: NormGroup = {
     { min: 7, max: 7, stat: "90°", esito: "" },
     { min: 6, max: 6, stat: "89°", esito: "" },
     { min: 6, max: 6, stat: "88°", esito: "" },
-    { min: 5, max: 5, stat: "85-87°", esito: "" },
-    { min: 5, max: 5, stat: "84°", esito: "" },
+    { min: 5, max: 5, stat: "84-87°", esito: "" },
     { min: 3, max: 4, stat: "80°", esito: "" },
     { min: 2, max: 2, stat: "75°", esito: "" },
     { min: 1, max: 1, stat: "50°", esito: "" },
@@ -472,7 +471,22 @@ function toScore(ans: any): number {
 // COMPUTE (with gender-based norms)
 // ===============================
 
-export type ComputeCtx = { patientGender?: "M" | "F" | null };
+export type ComputeCtx = {
+  patientSex?: string | null; // accepts "F"/"M" or "female"/"male"
+};
+
+type Sex = "M" | "F" | null;
+
+function normalizeSex(v: unknown): Sex {
+  if (!v) return null;
+  const s = String(v).trim().toLowerCase();
+
+  if (s === "f" || s === "female" || s === "femmina" || s === "donna")
+    return "F";
+  if (s === "m" || s === "male" || s === "maschio" || s === "uomo") return "M";
+
+  return null;
+}
 
 export function computeADHDRS5DocenteOther(
   answers: Record<string, any>,
@@ -507,9 +521,28 @@ export function computeADHDRS5DocenteOther(
     autostima: toScore(answers[qKey(24)]),
   };
 
+  function normalizeGender(input: unknown): GenderKey {
+    const s = String(input ?? "")
+      .trim()
+      .toLowerCase();
+
+    // Accept all common forms
+    if (s === "f" || s === "female" || s === "femmina" || s === "donna")
+      return "FEMALE";
+    if (s === "m" || s === "male" || s === "maschio" || s === "uomo")
+      return "MALE";
+
+    // fallback (keep your current behavior)
+    return "MALE";
+  }
+
   // Determine gender and select appropriate norms
-  const gender: GenderKey = ctx?.patientGender === "F" ? "FEMALE" : "MALE";
+  const gender: GenderKey = normalizeGender(
+    (ctx as any)?.patientSex ?? (ctx as any)?.patientGender,
+  );
+
   const norms = gender === "MALE" ? MALE_NORMS : FEMALE_NORMS;
+
   const impairmentNorms =
     gender === "MALE" ? MALE_IMPAIRMENT_NORMS : FEMALE_IMPAIRMENT_NORMS;
 
