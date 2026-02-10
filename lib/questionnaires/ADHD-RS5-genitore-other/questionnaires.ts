@@ -182,8 +182,8 @@ const MALE_NORMS: NormGroup = {
     { min: 27, max: 29, stat: "95°", esito: "lievemente sintomatico" },
     { min: 26, max: 26, stat: "94°", esito: "lievemente sintomatico" },
     { min: 25, max: 25, stat: "93°", esito: "lievemente sintomatico" },
-    { min: 25, max: 25, stat: "92°", esito: "" }, //NEED TO CHECK
-    { min: 22, max: 24, stat: "91°", esito: "" },
+    { min: 24, max: 24, stat: "92°", esito: "" }, //NEED TO CHECK
+    { min: 22, max: 23, stat: "91°", esito: "" },
     { min: 21, max: 21, stat: "90°", esito: "" },
     { min: 20, max: 20, stat: "89°", esito: "" },
     { min: 19, max: 19, stat: "88°", esito: "" },
