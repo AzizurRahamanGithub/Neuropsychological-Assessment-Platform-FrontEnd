@@ -215,12 +215,23 @@ export function computeBIS11Self(answers: Record<string, any>) {
       fattore_impulsivita_attentiva,
       21,
     ),
+    // First-order factors (subscales)
+    "Attenzione PG": String(attenzione_punteggio),
+    "Attenzione ESITO": getEsito(attenzione_punteggio, 13),
+
+    "Impulsività cognitiva PG": String(impulsivita_cognitiva_punteggio),
+    "Impulsività cognitiva ESITO": getEsito(impulsivita_cognitiva_punteggio, 8),
 
     "Fattore impulsività motoria PG": String(fattore_impulsivita_motoria),
     "Fattore impulsività motoria ESITO": getEsito(
       fattore_impulsivita_motoria,
       29,
     ),
+    "Impulsività motoria PG": String(impulsivita_motoria_punteggio),
+    "Impulsività motoria ESITO": getEsito(impulsivita_motoria_punteggio, 19),
+
+    "Perseveranza PG": String(perseveranza_punteggio),
+    "Perseveranza ESITO": getEsito(perseveranza_punteggio, 11),
 
     "Fattore impulsività da non pianificazione PG": String(
       fattore_impulsivita_non_pianificazione,
@@ -229,19 +240,6 @@ export function computeBIS11Self(answers: Record<string, any>) {
       fattore_impulsivita_non_pianificazione,
       29,
     ),
-
-    // First-order factors (subscales)
-    "Attenzione PG": String(attenzione_punteggio),
-    "Attenzione ESITO": getEsito(attenzione_punteggio, 13),
-
-    "Impulsività cognitiva PG": String(impulsivita_cognitiva_punteggio),
-    "Impulsività cognitiva ESITO": getEsito(impulsivita_cognitiva_punteggio, 8),
-
-    "Impulsività motoria PG": String(impulsivita_motoria_punteggio),
-    "Impulsività motoria ESITO": getEsito(impulsivita_motoria_punteggio, 19),
-
-    "Perseveranza PG": String(perseveranza_punteggio),
-    "Perseveranza ESITO": getEsito(perseveranza_punteggio, 11),
 
     "Autocontrollo PG": String(autocontrollo_punteggio),
     "Autocontrollo ESITO": getEsito(autocontrollo_punteggio, 16),

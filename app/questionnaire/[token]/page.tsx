@@ -173,12 +173,20 @@ export default function QuestionnairePage() {
   const [patientAge, setPatientAge] = useState<number | null>(null);
   const [patientSex, setPatientSex] = useState<string | null>(null); // "female" | "male"
   const [patientEducation, setPatientEducation] = useState<number | null>(null);
-
+  const [selfResultsFromBackend, setSelfResultsFromBackend] = useState<Record<
+    string,
+    any
+  > | null>(null);
   const [state, setState] = useState<QuestionnaireState>({
     currentQuestionnaireIndex: 0,
     responses: {},
     savedAt: null,
   });
+  const [selfLinkStatus, setSelfLinkStatus] = useState<{
+    exists: boolean;
+    is_submitted: boolean;
+    token?: string;
+  } | null>(null);
 
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string>("");
@@ -212,6 +220,15 @@ export default function QuestionnairePage() {
 
         const payload = extractPayload(data);
 
+        const backendSelfResults = payload?.self_results ?? null;
+        console.log("✅ SELF results from backend:", backendSelfResults);
+        setSelfResultsFromBackend(backendSelfResults);
+
+        // ✅ NEW: Extract SELF link status
+        const selfStatus = payload?.self_link_status ?? null;
+        console.log("✅ SELF link status:", selfStatus);
+        setSelfLinkStatus(selfStatus);
+
         const ps =
           payload?.patient_sex ??
           payload?.patientSex ??
@@ -229,12 +246,8 @@ export default function QuestionnairePage() {
           payload?.patient?.education ??
           null;
 
-        // 2. Convert to number if possible, or keep as raw value if it's a string
-        // Note: We use Number(pe) only if pe is truthy to avoid converting null to 0
         const peNum = typeof pe === "number" ? pe : pe ? Number(pe) : null;
 
-        // 3. Set the state, ensuring it's a finite number; otherwise, default to null
-        // If you actually WANT the string "101", keep the Number.isFinite check
         setPatientEducation(Number.isFinite(peNum) ? peNum : null);
 
         console.log("✅ patient_Education from GET:", peNum);
@@ -405,48 +418,119 @@ export default function QuestionnairePage() {
 
       const computedResults: Record<string, Record<string, any>> = {};
 
+      // ✅ STEP 1: Get SELF results (from backend OR compute if not available)
+      let selfResults: Record<string, any> | null = selfResultsFromBackend;
+
+      if (!selfResults) {
+        // Fallback: compute SELF if this link contains SELF questionnaire
+        console.log(
+          "⚠️ No SELF results from backend, checking if SELF is in current questionnaires...",
+        );
+
+        for (const qn of questionnaires) {
+          const formCode = (qn as any).formCode as string | undefined;
+          if (!formCode) continue;
+
+          const isSelf =
+            formCode === "BAARS_IV_ATTUALE_SELF" ||
+            formCode.includes("_SELF") ||
+            (formCode.toUpperCase().includes("ATTUALE") &&
+              formCode.toUpperCase().includes("SELF"));
+
+          console.log(
+            `🔍 Checking formCode: "${formCode}" -> isSelf: ${isSelf}`,
+          );
+
+          if (isSelf) {
+            const mod: any = (QUESTIONNAIRE_REGISTRY as any)?.[formCode];
+            if (!mod?.compute) {
+              console.log(`⚠️ No compute function for SELF: ${formCode}`);
+              continue;
+            }
+
+            const uiResponsesForThis = state.responses[qn.id] || {};
+            const answersForCompute: Record<string, any> = {};
+
+            for (const q of qn.questions) {
+              const key = (q as any).questionKey as string;
+              const raw = (uiResponsesForThis as any)?.[q.id];
+              const strip = (v: any) =>
+                typeof v === "string" ? v.split("__")[0] : v;
+              if (Array.isArray(raw)) answersForCompute[key] = raw.map(strip);
+              else answersForCompute[key] = strip(raw);
+            }
+
+            selfResults = mod.compute(answersForCompute, {
+              patientAge: patientAge ?? undefined,
+              patientSex: patientSex ?? undefined,
+              patientEducation: patientEducation ?? undefined,
+            });
+
+            if (selfResults) {
+              computedResults[formCode] = selfResults;
+            }
+
+            console.log(
+              "✅ SELF computed from current questionnaire:",
+              selfResults,
+            );
+            break;
+          }
+        }
+      } else {
+        console.log("✅ Using SELF results from backend:", selfResults);
+      }
+
+      console.log(
+        "✅ Final selfResults available for OTHER:",
+        selfResults ? "YES" : "NO",
+      );
+
+      // ✅ STEP 2: Compute ALL questionnaires (including OTHER with selfResults)
       for (const qn of questionnaires) {
         const formCode = (qn as any).formCode as string | undefined;
         if (!formCode)
           throw new Error("Missing formCode in questionnaire list");
+
+        // Skip if already computed (SELF)
+        if (computedResults[formCode]) {
+          console.log(`⏭️ Skipping ${formCode} (already computed)`);
+          continue;
+        }
 
         const mod: any = (QUESTIONNAIRE_REGISTRY as any)?.[formCode];
         if (!mod?.compute)
           throw new Error(`Compute not found for formCode="${formCode}"`);
 
         const uiResponsesForThis = state.responses[qn.id] || {};
-
         const answersForCompute: Record<string, any> = {};
-        for (const q of qn.questions) {
-          const key = (q as any).questionKey as string; // "q1"
-          const raw = (uiResponsesForThis as any)?.[q.id];
 
+        for (const q of qn.questions) {
+          const key = (q as any).questionKey as string;
+          const raw = (uiResponsesForThis as any)?.[q.id];
           const strip = (v: any) =>
             typeof v === "string" ? v.split("__")[0] : v;
-
           if (Array.isArray(raw)) answersForCompute[key] = raw.map(strip);
           else answersForCompute[key] = strip(raw);
         }
 
+        console.log(`🔧 Computing ${formCode}...`);
+        console.log("  patientAge:", patientAge);
         console.log(
-          "✅ patientAge state:",
-          patientAge,
-          "type:",
-          typeof patientAge,
+          "  selfResults available:",
+          selfResults ? "✅ YES" : "❌ NO",
         );
-        console.log("✅ answersForCompute:", answersForCompute);
 
+        // ✅ Pass selfResults to OTHER questionnaires
         const out = mod.compute(answersForCompute, {
           patientAge: patientAge ?? undefined,
           patientSex: patientSex ?? undefined,
           patientEducation: patientEducation ?? undefined,
+          selfResults: selfResults ?? undefined, // ✅ THIS IS THE KEY
         });
-        console.log("✅ compute ctx:", {
-          patientAge,
-          patientSex,
-          patientEducation,
-        });
+
         computedResults[formCode] = out;
+        console.log(`✅ ${formCode} computed:`, out);
       }
 
       // ✅ set report_by based on OTHER selection
@@ -464,7 +548,6 @@ export default function QuestionnairePage() {
 
       const url = `${API_BASE}/questionnaire/submit/${token}/`;
 
-      // ✅ FRONTEND -> BACKEND কী যাচ্ছে (DevTools Console এ দেখাবে)
       console.log("✅ SUBMIT URL:", url);
       console.log("✅ SUBMIT token:", token);
       console.log("✅ SUBMIT payload object:", payload);
@@ -541,6 +624,78 @@ export default function QuestionnairePage() {
           </CardContent>
         </Card>
       </div>
+    );
+  }
+  if (
+    linkType === "single_other" &&
+    selfLinkStatus?.exists &&
+    !selfLinkStatus?.is_submitted
+  ) {
+    return (
+      <main className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 p-4">
+        <div className="max-w-2xl mx-auto">
+          <Card className="border-0 shadow-lg">
+            <CardHeader>
+              <CardTitle className="text-xl text-amber-600">
+                ⚠️ Completare prima il questionario SELF
+              </CardTitle>
+              <CardDescription>
+                Prima di compilare questo questionario (OTHER), è necessario che
+                il paziente completi il questionario SELF.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <Alert>
+                <AlertCircle className="h-4 w-4" />
+                <AlertDescription>
+                  <p className="font-semibold mb-2">Ordine richiesto:</p>
+                  <ol className="list-decimal list-inside space-y-1">
+                    <li>Il paziente deve compilare il questionario SELF</li>
+                    <li>
+                      Dopo che SELF è stato inviato, puoi compilare questo
+                      questionario OTHER
+                    </li>
+                  </ol>
+                </AlertDescription>
+              </Alert>
+
+              {selfLinkStatus?.token && (
+                <div className="mt-4 p-4 bg-blue-50 rounded border border-blue-200">
+                  <p className="text-sm text-gray-700 mb-2">
+                    <strong>Link questionario SELF:</strong>
+                  </p>
+                  <code className="block p-2 bg-white rounded text-xs break-all">
+                    {window.location.origin}/questionnaire/
+                    {selfLinkStatus.token}
+                  </code>
+                  <Button
+                    onClick={() => {
+                      navigator.clipboard.writeText(
+                        `${window.location.origin}/questionnaire/${selfLinkStatus.token}`,
+                      );
+                      alert("Link copiato!");
+                    }}
+                    className="mt-2"
+                    variant="outline"
+                    size="sm"
+                  >
+                    Copia link SELF
+                  </Button>
+                </div>
+              )}
+
+              <div className="mt-6 text-center">
+                <Button
+                  onClick={() => window.location.reload()}
+                  variant="outline"
+                >
+                  Ricarica pagina
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      </main>
     );
   }
 

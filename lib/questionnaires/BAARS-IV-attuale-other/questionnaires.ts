@@ -198,7 +198,7 @@ function pickAgeBand(age: number): AgeBandKey {
 export type ComputeCtx = {
   patientAge?: number | null;
   patientGender?: string | null;
-  selfResults?: Record<string, string> | null;
+  selfResults?: Record<string, string> | null; // values from computeBAARSIVSelf()
 };
 
 export function computeBAARSIVOther(
@@ -246,57 +246,71 @@ export function computeBAARSIVOther(
   const age = Number(ctx?.patientAge ?? 0);
   const band = age > 0 ? pickAgeBand(age) : "";
 
-  const disattenzioneEsito = disattenzionePunteggio >= 7.6 ? "*" : "";
-  const iperattivitaEsito = iperattivitaPunteggio >= 4.6 ? "*" : "";
-  const impulsivitaEsito = impulsivitaPunteggio >= 3.5 ? "*" : "";
-  const sctEsito = sctPunteggio >= 8.4 ? "*" : "";
-  const totaleADHDEsito = totaleADHDPunteggio >= 13.0 ? "*" : "";
-
+  // NOTE: For OTHER we keep ESITO/STAT based on SELF vs OTHER difference (Excel ABS),
+  // as requested. (If you also need "other vs cutoff" esito separately, tell me.)
   let disattenzioneSTAT = "—";
   let iperattivitaSTAT = "—";
   let impulsivitaSTAT = "—";
   let sctSTAT = "—";
   let totaleADHDSTAT = "—";
+
   let disattenzioneRDIEsito = "";
   let iperattivitaRDIEsito = "";
   let impulsivitaRDIEsito = "";
   let sctRDIEsito = "";
   let totaleADHDRDIEsito = "";
 
+  // ✅ NEW: robust numeric parsing from SELF results + ABS diff like Excel
+  function numFromSelf(key: string): number {
+    const raw = ctx?.selfResults?.[key];
+    if (raw == null) return NaN;
+
+    // normalize "12,3" -> "12.3", strip symbols like "°", "—", etc.
+    const s = String(raw)
+      .trim()
+      .replace(",", ".")
+      .replace(/[^\d.\-]/g, "");
+    const n = Number(s);
+    return Number.isFinite(n) ? n : NaN;
+  }
+
+  function diffStat(selfKey: string, otherScore: number, cutoff: number) {
+    const selfVal = numFromSelf(selfKey);
+    if (!Number.isFinite(selfVal)) {
+      return { stat: "—", esito: "" };
+    }
+    const diff = Math.abs(selfVal - otherScore); // ✅ Excel ABS(self - other)
+    return {
+      stat: diff.toFixed(1),
+      esito: diff >= cutoff ? "*" : "", // ✅ "*" when diff ≥ cutoff
+    };
+  }
+
   if (ctx?.selfResults) {
-    const selfDisattenzione = Number(
-      ctx.selfResults["Disattenzione punteggio PG"] || 0,
+    const d = diffStat(
+      "Disattenzione punteggio PG",
+      disattenzionePunteggio,
+      7.6,
     );
-    const selfIperattivita = Number(
-      ctx.selfResults["Iperattività punteggio PG"] || 0,
-    );
-    const selfImpulsivita = Number(
-      ctx.selfResults["Impulsività punteggio PG"] || 0,
-    );
-    const selfSCT = Number(ctx.selfResults["SCT punteggio PG"] || 0);
-    const selfTotaleADHD = Number(
-      ctx.selfResults["Totale ADHD punteggio PG"] || 0,
-    );
+    const h = diffStat("Iperattività punteggio PG", iperattivitaPunteggio, 4.6);
+    const i = diffStat("Impulsività punteggio PG", impulsivitaPunteggio, 3.5);
+    const s = diffStat("SCT punteggio PG", sctPunteggio, 8.4);
+    const t = diffStat("Totale ADHD punteggio PG", totaleADHDPunteggio, 13.0);
 
-    const diffDisattenzione = Math.abs(
-      selfDisattenzione - disattenzionePunteggio,
-    );
-    const diffIperattivita = Math.abs(selfIperattivita - iperattivitaPunteggio);
-    const diffImpulsivita = Math.abs(selfImpulsivita - impulsivitaPunteggio);
-    const diffSCT = Math.abs(selfSCT - sctPunteggio);
-    const diffTotaleADHD = Math.abs(selfTotaleADHD - totaleADHDPunteggio);
+    disattenzioneSTAT = d.stat;
+    disattenzioneRDIEsito = d.esito;
 
-    disattenzioneSTAT = diffDisattenzione.toFixed(1);
-    iperattivitaSTAT = diffIperattivita.toFixed(1);
-    impulsivitaSTAT = diffImpulsivita.toFixed(1);
-    sctSTAT = diffSCT.toFixed(1);
-    totaleADHDSTAT = diffTotaleADHD.toFixed(1);
+    iperattivitaSTAT = h.stat;
+    iperattivitaRDIEsito = h.esito;
 
-    disattenzioneRDIEsito = diffDisattenzione >= 7.6 ? "*" : "";
-    iperattivitaRDIEsito = diffIperattivita >= 4.6 ? "*" : "";
-    impulsivitaRDIEsito = diffImpulsivita >= 3.5 ? "*" : "";
-    sctRDIEsito = diffSCT >= 8.4 ? "*" : "";
-    totaleADHDRDIEsito = diffTotaleADHD >= 13.0 ? "*" : "";
+    impulsivitaSTAT = i.stat;
+    impulsivitaRDIEsito = i.esito;
+
+    sctSTAT = s.stat;
+    sctRDIEsito = s.esito;
+
+    totaleADHDSTAT = t.stat;
+    totaleADHDRDIEsito = t.esito;
   }
 
   return {
